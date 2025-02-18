@@ -41,7 +41,12 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.store.Propose(key, string(v))
+		log.Println("r: ", r.RequestURI)
+		log.Println("key: ", key)
+		log.Println("value: ", v)
+		log.Println("string value: ", string(v))
+
+		h.store.proposeToRaft(key, string(v))
 
 		// Optimistic-- no waiting for ack from raft. Value is not yet
 		// committed so a subsequent GET on the key may return old value

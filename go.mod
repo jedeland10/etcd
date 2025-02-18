@@ -14,6 +14,7 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 	go.etcd.io/etcd/server/v3 => ./server
 	go.etcd.io/etcd/tests/v3 => ./tests
+	go.etcd.io/raft/v3 v3.6.0-beta.0 => /Users/johanedeland/Documents/plugg/thesis/raft
 )
 
 require (
@@ -21,6 +22,8 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
+	github.com/gogo/protobuf v1.3.2
+	github.com/golang/protobuf v1.5.4
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.4.0-beta.0
@@ -37,7 +40,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 )
 
 require (
@@ -50,10 +53,8 @@ require (
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect

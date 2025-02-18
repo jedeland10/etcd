@@ -201,6 +201,7 @@ func (cw *streamWriter) run() {
 
 		case m := <-msgc:
 			err := enc.encode(&m)
+
 			if err == nil {
 				unflushed += m.Size()
 

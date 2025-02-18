@@ -728,6 +728,10 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message to mismatch member")
 	}
 	if m.Type == raftpb.MsgApp {
+		/*	for _, entry := range m.Entries {
+			fmt.Println(m.To, " receive data: ", entry.Data)
+			fmt.Println(m.To, " receive data string: ", string(entry.Data))
+		}*/
 		s.stats.RecvAppendReq(types.ID(m.From).String(), m.Size())
 	}
 	return s.r.Step(ctx, m)

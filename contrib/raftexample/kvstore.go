@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/v3/contrib/raftexample/protostore"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -53,7 +54,8 @@ func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <
 		}
 	}
 	// read commits from raft into kvStore map until error
-	go s.readCommits(commitC, errorC)
+	// go s.readCommits(commitC, errorC)
+	go s.readProtoCommits(commitC, errorC)
 	return s
 }
 
@@ -62,6 +64,20 @@ func (s *kvstore) Lookup(key string) (string, bool) {
 	defer s.mu.RUnlock()
 	v, ok := s.kvStore[key]
 	return v, ok
+}
+
+func (s *kvstore) proposeToRaft(key string, value string) {
+	kvMessage := &protostore.MyKV{
+		Key:   []byte(key),
+		Value: []byte(value),
+	}
+
+	encodedData, err := kvMessage.Marshal()
+	if err != nil {
+		log.Fatalf("Failed to serialize MyKV: %v", err)
+	}
+
+	s.proposeC <- string(encodedData)
 }
 
 func (s *kvstore) Propose(k string, v string) {
@@ -97,6 +113,41 @@ func (s *kvstore) readCommits(commitC <-chan *commit, errorC <-chan error) {
 			}
 			s.mu.Lock()
 			s.kvStore[dataKv.Key] = dataKv.Val
+			s.mu.Unlock()
+		}
+		close(commit.applyDoneC)
+	}
+	if err, ok := <-errorC; ok {
+		log.Fatal(err)
+	}
+}
+
+func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) {
+	for commit := range commitC {
+		if commit == nil {
+			// signaled to load snapshot
+			snapshot, err := s.loadSnapshot()
+			if err != nil {
+				log.Panic(err)
+			}
+			if snapshot != nil {
+				log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+				if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+					log.Panic(err)
+				}
+			}
+			continue
+		}
+
+		for _, data := range commit.data {
+			var dataKv protostore.MyKV
+
+			if err := dataKv.Unmarshal([]byte(data)); err != nil {
+				log.Fatalf("❌ raftexample: could not decode Protobuf message (%v)", err)
+			}
+
+			s.mu.Lock()
+			s.kvStore[string(dataKv.Key)] = string(dataKv.Value)
 			s.mu.Unlock()
 		}
 		close(commit.applyDoneC)

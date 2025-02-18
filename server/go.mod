@@ -4,6 +4,8 @@ go 1.23
 
 toolchain go1.23.5
 
+replace go.etcd.io/raft/v3 v3.6.0-beta.0 => /Users/johanedeland/Documents/plugg/thesis/raft
+
 require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -42,7 +44,7 @@ require (
 	golang.org/x/time v0.9.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d
 	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	sigs.k8s.io/yaml v1.4.0
 )
