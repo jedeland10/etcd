@@ -87,6 +87,8 @@ func putFunc(cmd *cobra.Command, _ []string) {
 
 	bar = pb.New(putTotal)
 	bar.Start()
+	fmt.Println("start new put benchmark with keysize: ", keySize)
+	fmt.Println("start new put benchmark with valsize: ", valSize)
 
 	r := newReport()
 	for i := range clients {

@@ -680,6 +680,7 @@ func (s *EtcdServer) DowngradeEnabledHandler() http.Handler {
 }
 
 func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("http request: ", r)
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

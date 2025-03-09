@@ -16,6 +16,8 @@ package etcdmain
 
 import (
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/coreos/go-systemd/v22/daemon"
@@ -24,6 +26,8 @@ import (
 
 func Main(args []string) {
 	checkSupportArch()
+
+	initPprof()
 
 	if len(args) > 1 {
 		cmd := args[1]
@@ -38,6 +42,11 @@ func Main(args []string) {
 	}
 
 	startEtcdOrProxyV2(args)
+}
+func initPprof() {
+	go func() {
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 }
 
 func notifySystemd(lg *zap.Logger) {
