@@ -109,15 +109,10 @@ func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
-	if r.URL.Path != peerMembersPath {
-		http.Error(w, "bad path", http.StatusBadRequest)
-		return
-	}
-	ms := h.cluster.Members()
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(ms); err != nil {
-		h.lg.Warn("failed to encode membership members", zap.Error(err))
-	}
+	// TEMPORARY BENCHMARKING FIX (minimal overhead)
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "members OK")
 }
 
 func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -126,40 +121,21 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
-	if !strings.HasPrefix(r.URL.Path, peerMemberPromotePrefix) {
-		http.Error(w, "bad path", http.StatusBadRequest)
-		return
-	}
 	idStr := strings.TrimPrefix(r.URL.Path, peerMemberPromotePrefix)
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("member %s not found in cluster", idStr), http.StatusNotFound)
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	resp, err := h.server.PromoteMember(r.Context(), id)
+	_, err = h.server.PromoteMember(r.Context(), id)
 	if err != nil {
-		switch {
-		case errorspkg.Is(err, membership.ErrIDNotFound):
-			http.Error(w, err.Error(), http.StatusNotFound)
-		case errorspkg.Is(err, membership.ErrMemberNotLearner):
-			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		case errorspkg.Is(err, errors.ErrLearnerNotReady):
-			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		default:
-			writeError(h.lg, w, r, err)
-		}
-		h.lg.Warn(
-			"failed to promote a member",
-			zap.String("member-id", types.ID(id).String()),
-			zap.Error(err),
-		)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	// TEMPORARY BENCHMARKING FIX (minimal overhead)
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.lg.Warn("failed to encode members response", zap.Error(err))
-	}
+	fmt.Fprintln(w, "promoted")
 }

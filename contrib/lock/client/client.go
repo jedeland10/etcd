@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -48,37 +49,23 @@ type response struct {
 }
 
 func write(key string, value string, version int64) error {
-	req := request{
-		Op:      "write",
-		Key:     key,
-		Val:     value,
-		Version: version,
-	}
+	// MINIMAL PLAINTEXT PAYLOAD (no JSON overhead)
+	payload := fmt.Sprintf("%s:%s:%d", key, value, version)
 
-	reqBytes, err := json.Marshal(&req)
+	httpResp, err := http.Post("http://localhost:8080", "text/plain", strings.NewReader(payload))
 	if err != nil {
-		log.Fatalf("failed to marshal request: %s", err)
+		log.Fatalf("failed to send request to storage: %s", err)
 	}
-
-	httpResp, err := http.Post("http://localhost:8080", "application/json", bytes.NewReader(reqBytes))
-	if err != nil {
-		log.Fatalf("failed to send a request to storage: %s", err)
-	}
+	defer httpResp.Body.Close()
 
 	respBytes, err := io.ReadAll(httpResp.Body)
 	if err != nil {
-		log.Fatalf("failed to read request body: %s", err)
-	}
-	httpResp.Body.Close()
-
-	resp := new(response)
-	err = json.Unmarshal(respBytes, resp)
-	if err != nil {
-		log.Fatalf("failed to unmarshal response json: %s", err)
+		log.Fatalf("failed to read response: %s", err)
 	}
 
-	if resp.Err != "" {
-		return fmt.Errorf("error: %s", resp.Err)
+	respStr := string(respBytes)
+	if strings.HasPrefix(respStr, "error") {
+		return fmt.Errorf(respStr)
 	}
 
 	return nil

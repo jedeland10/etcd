@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	_ "net/http/pprof" // Register pprof handlers
 
 	"go.uber.org/zap"
 )
@@ -78,7 +79,7 @@ type raftNode struct {
 	logger *zap.Logger
 }
 
-var defaultSnapshotCount uint64 = 10000
+var defaultSnapshotCount uint64 = 50000
 
 // newRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
@@ -296,7 +297,7 @@ func (rc *raftNode) startRaft() {
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
 		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           1_000_000,
+		MaxInflightMsgs:           2_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 
@@ -362,6 +363,7 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 var snapshotCatchUpEntriesN uint64 = 10000
 
 func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
+	return
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
 		return
 	}

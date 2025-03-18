@@ -41,7 +41,7 @@ const (
 	streamTypeMessage  streamType = "message"
 	streamTypeMsgAppV2 streamType = "msgappv2"
 
-	streamBufSize = 10_000_000
+	streamBufSize = 2_000_000
 )
 
 var (

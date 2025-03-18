@@ -19,3 +19,7 @@ message MyKV {
     required bytes key = 1;
     required bytes value = 2;
 }
+
+message KVSnapshot {
+    repeated MyKV entries = 1;
+}

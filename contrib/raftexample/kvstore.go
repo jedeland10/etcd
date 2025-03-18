@@ -17,12 +17,12 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"log"
 	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/v3/contrib/raftexample/protostore"
 	"go.etcd.io/raft/v3/raftpb"
@@ -66,11 +66,16 @@ func (s *kvstore) Lookup(key string) (string, bool) {
 	return v, ok
 }
 
+var proposalBufferPool = sync.Pool{
+	New: func() interface{} { return &protostore.MyKV{} },
+}
+
 func (s *kvstore) proposeToRaft(key string, value string) {
-	kvMessage := &protostore.MyKV{
-		Key:   []byte(key),
-		Value: []byte(value),
-	}
+	kvMessage := proposalBufferPool.Get().(*protostore.MyKV)
+	defer proposalBufferPool.Put(kvMessage)
+
+	kvMessage.Key = []byte(key)
+	kvMessage.Value = []byte(value)
 
 	encodedData, err := kvMessage.Marshal()
 	if err != nil {
@@ -157,30 +162,75 @@ func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) 
 	}
 }
 
+var bufPool = sync.Pool{
+	New: func() interface{} { return &bytes.Buffer{} },
+}
+
 func (s *kvstore) getSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return json.Marshal(s.kvStore)
+
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufPool.Put(buf)
+
+	snapshot := &protostore.KVSnapshot{}
+	for k, v := range s.kvStore {
+		snapshot.Entries = append(snapshot.Entries, &protostore.MyKV{
+			Key:   []byte(k),
+			Value: []byte(v),
+		})
+	}
+
+	data, err := proto.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Write(data)
+	return buf.Bytes(), nil
 }
 
 func (s *kvstore) loadSnapshot() (*raftpb.Snapshot, error) {
 	snapshot, err := s.snapshotter.Load()
-	if errors.Is(err, snap.ErrNoSnapshot) {
-		return nil, nil
-	}
 	if err != nil {
+		if errors.Is(err, snap.ErrNoSnapshot) {
+			return nil, nil // no snapshot found is fine initially
+		}
 		return nil, err
 	}
+
+	// Recover state explicitly from protobuf-encoded snapshot
+	var kvSnap protostore.KVSnapshot
+	if err := proto.Unmarshal(snapshot.Data, &protostore.KVSnapshot{}); err != nil {
+		return nil, err
+	}
+
+	// Apply snapshot state explicitly
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, kv := range kvSnap.Entries {
+		s.kvStore[string(kv.Key)] = string(kv.Value)
+	}
+
 	return snapshot, nil
 }
 
 func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
-	var store map[string]string
-	if err := json.Unmarshal(snapshot, &store); err != nil {
-		return err
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.kvStore = store
+
+	snap := &protostore.KVSnapshot{}
+	if err := proto.Unmarshal(snapshot, snap); err != nil {
+		return err
+	}
+
+	kv := make(map[string]string)
+	for _, entry := range snap.Entries {
+		kv[string(entry.Key)] = string(entry.Value)
+	}
+
+	s.kvStore = kv
 	return nil
 }
