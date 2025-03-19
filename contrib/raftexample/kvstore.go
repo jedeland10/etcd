@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -149,6 +150,8 @@ func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) 
 
 			if err := dataKv.Unmarshal([]byte(data)); err != nil {
 				log.Fatalf("❌ raftexample: could not decode Protobuf message (%v)", err)
+
+				fmt.Println("data: ", []byte(data))
 			}
 
 			s.mu.Lock()

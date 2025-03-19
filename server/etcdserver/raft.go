@@ -37,7 +37,7 @@ const (
 	maxSizePerMsg = 1 * 1024 * 1024
 	// Never overflow the rafthttp buffer, which is 4096.
 	// TODO: a better const?
-	maxInflightMsgs = 1_000_000
+	maxInflightMsgs = 100_000
 )
 
 var (
