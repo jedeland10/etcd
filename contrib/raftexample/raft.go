@@ -297,7 +297,7 @@ func (rc *raftNode) startRaft() {
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
 		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           100_000,
+		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 
