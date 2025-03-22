@@ -38,7 +38,7 @@ const (
 	// temporary network latency.
 	// The size ensures that pipeline does not drop messages when the network
 	// is out of work for less than 1 second in good path.
-	pipelineBufSize = 64
+	pipelineBufSize = 1_000_000
 )
 
 var errStopped = errors.New("stopped")
