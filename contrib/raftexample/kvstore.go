@@ -31,7 +31,7 @@ import (
 
 // a key-value store backed by raft
 type kvstore struct {
-	proposeC    chan<- string // channel for proposing updates
+	proposeC    chan<- *commit // channel for proposing updates
 	mu          sync.RWMutex
 	kvStore     map[string]string // current committed key-value pairs
 	snapshotter *snap.Snapshotter
@@ -42,7 +42,7 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *commit, errorC <-chan error) *kvstore {
+func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- *commit, commitC <-chan *commit, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 	if err != nil {
@@ -71,7 +71,9 @@ var proposalBufferPool = sync.Pool{
 	New: func() interface{} { return &protostore.MyKV{} },
 }
 
-func (s *kvstore) proposeToRaft(key string, value string) {
+func (s *kvstore) proposeToRaft(key, value string) chan struct{} {
+	ackCh := make(chan struct{})
+
 	kvMessage := proposalBufferPool.Get().(*protostore.MyKV)
 	defer proposalBufferPool.Put(kvMessage)
 
@@ -83,15 +85,30 @@ func (s *kvstore) proposeToRaft(key string, value string) {
 		log.Fatalf("Failed to serialize MyKV: %v", err)
 	}
 
-	s.proposeC <- string(encodedData)
+	// Wrap the encoded data and ack channel in a commit struct.
+	commitMsg := &commit{
+		data:       []string{string(encodedData)},
+		applyDoneC: ackCh,
+	}
+
+	s.proposeC <- commitMsg
+	return ackCh
 }
 
-func (s *kvstore) Propose(k string, v string) {
+func (s *kvstore) Propose(k string, v string) chan struct{} {
+	ackCh := make(chan struct{})
 	var buf strings.Builder
 	if err := gob.NewEncoder(&buf).Encode(kv{k, v}); err != nil {
 		log.Fatal(err)
 	}
-	s.proposeC <- buf.String()
+	// Wrap the encoded data and ack channel in a commit struct.
+	commitMsg := &commit{
+		data:       []string{buf.String()},
+		applyDoneC: ackCh,
+	}
+
+	s.proposeC <- commitMsg
+	return ackCh
 }
 
 func (s *kvstore) readCommits(commitC <-chan *commit, errorC <-chan error) {

@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -41,11 +42,13 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.store.proposeToRaft(key, string(v))
-
-		// Optimistic-- no waiting for ack from raft. Value is not yet
-		// committed so a subsequent GET on the key may return old value
-		w.WriteHeader(http.StatusNoContent)
+		ackCh := h.store.proposeToRaft(key, string(v))
+		select {
+		case <-ackCh:
+			w.WriteHeader(http.StatusNoContent)
+		case <-time.After(5 * time.Second):
+			http.Error(w, "Timed out waiting for commit ack", http.StatusGatewayTimeout)
+		}
 	case http.MethodGet:
 		if v, ok := h.store.Lookup(key); ok {
 			w.Write([]byte(v))
