@@ -35,7 +35,7 @@ func main() {
 	join := flag.Bool("join", false, "join an existing cluster")
 	flag.Parse()
 
-	proposeC := make(chan string)
+	proposeC := make(chan *commit)
 	defer close(proposeC)
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)

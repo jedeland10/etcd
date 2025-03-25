@@ -41,12 +41,12 @@ import (
 
 type commit struct {
 	data       []string
-	applyDoneC chan<- struct{}
+	applyDoneC chan struct{}
 }
 
 // A key-value stream backed by raft
 type raftNode struct {
-	proposeC    <-chan string            // proposed messages (k,v)
+	proposeC    <-chan *commit           // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
 	commitC     chan<- *commit           // entries committed to log (k,v)
 	errorC      chan<- error             // errors from raft session
@@ -77,6 +77,8 @@ type raftNode struct {
 	httpdonec chan struct{} // signals http server shutdown complete
 
 	logger *zap.Logger
+
+	pendingCommits []*commit
 }
 
 var defaultSnapshotCount uint64 = 50000
@@ -86,7 +88,7 @@ var defaultSnapshotCount uint64 = 50000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
+func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan *commit,
 	confChangeC <-chan raftpb.ConfChange,
 ) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *commit)
@@ -188,9 +190,17 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 	var applyDoneC chan struct{}
 
 	if len(data) > 0 {
-		applyDoneC = make(chan struct{}, 1)
+		var commitMsg *commit
+		if len(rc.pendingCommits) > 0 {
+			commitMsg = rc.pendingCommits[0]
+			rc.pendingCommits = rc.pendingCommits[1:]
+		} else {
+			commitMsg = &commit{applyDoneC: make(chan struct{}, 1)}
+		}
+		commitMsg.data = data
+		applyDoneC = commitMsg.applyDoneC
 		select {
-		case rc.commitC <- &commit{data, applyDoneC}:
+		case rc.commitC <- commitMsg:
 		case <-rc.stopc:
 			return nil, false
 		}
@@ -429,8 +439,10 @@ func (rc *raftNode) serveChannels() {
 				if !ok {
 					rc.proposeC = nil
 				} else {
+					// Assuming commitMsg.data has at least one element
+					rc.pendingCommits = append(rc.pendingCommits, prop)
 					// blocks until accepted by raft state machine
-					rc.node.Propose(context.TODO(), []byte(prop))
+					rc.node.Propose(context.TODO(), []byte(prop.data[0]))
 				}
 
 			case cc, ok := <-rc.confChangeC:
