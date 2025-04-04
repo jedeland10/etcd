@@ -73,8 +73,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 h1:VNqngBF40hVlDloBruUehVYC3Ar
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1/go.mod h1:RBRO7fro65R6tjKzYgLAFo0t1QEXY1Dp+i/bvpRiqiQ=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/jedeland10/raft v0.0.0-20250404083335-8e58f6b19362 h1:QhOUOq2Beb8/vXqORyD0/NdcUGrdisN8U/DwGApylqM=
-github.com/jedeland10/raft v0.0.0-20250404083335-8e58f6b19362/go.mod h1:+0vZuI2r7uMMvXpG59TCdhWyW4g7k3bWPjcG4q8yj3E=
+github.com/jedeland10/raft v0.0.0-20250404104306-6ef58fb55c53 h1:bzbZc2M+QaQoBWSmLDizTFBDMeRa0pR5BK42TZYzrQQ=
+github.com/jedeland10/raft v0.0.0-20250404104306-6ef58fb55c53/go.mod h1:+0vZuI2r7uMMvXpG59TCdhWyW4g7k3bWPjcG4q8yj3E=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
 github.com/jonboulle/clockwork v0.5.0/go.mod h1:3mZlmanh0g2NDKO5TWZVJAfofYk64M7XN3SzBPjZF60=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
