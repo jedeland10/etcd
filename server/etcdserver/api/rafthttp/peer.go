@@ -40,7 +40,7 @@ const (
 	DefaultConnReadTimeout  = 5 * time.Second
 	DefaultConnWriteTimeout = 5 * time.Second
 
-	recvBufSize = 4096
+	recvBufSize = 100_000
 	// maxPendingProposals holds the proposals during one leader election process.
 	// Generally one leader election takes at most 1 sec. It should have
 	// 0-2 election conflicts, and each one takes 0.5 sec.
