@@ -4,7 +4,7 @@ package protostore;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "protostore";
+option go_package = "../protostore";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;

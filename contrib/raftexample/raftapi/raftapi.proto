@@ -1,0 +1,33 @@
+syntax = "proto2";
+
+package raftapi;
+
+// Specify the Go package for generated code.
+option go_package = "../raftapi";
+
+service RaftKVService {
+  // Put a key/value pair into the store.
+  rpc Put(PutRequest) returns (PutResponse);
+
+  // Retrieve the value for a given key.
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
+message PutRequest {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+message PutResponse {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+message GetRequest {
+  optional string key = 1;
+}
+
+message GetResponse {
+  optional bool found = 1;
+  optional string value = 2;
+}

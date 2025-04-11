@@ -15,8 +15,6 @@
 package etcdhttp
 
 import (
-	"encoding/json"
-	errorspkg "errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -24,12 +22,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 )
 

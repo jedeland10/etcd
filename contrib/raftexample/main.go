@@ -31,7 +31,7 @@ func main() {
 
 	cluster := flag.String("cluster", "http://127.0.0.1:9021", "comma separated cluster peers")
 	id := flag.Int("id", 1, "node ID")
-	kvport := flag.Int("port", 9121, "key-value server port")
+	grpcPort := flag.Int("port", 9121, "key-value server port")
 	join := flag.Bool("join", false, "join an existing cluster")
 	flag.Parse()
 
@@ -48,5 +48,5 @@ func main() {
 	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
 
 	// the key-value http handler will propose updates to raft
-	serveHTTPKVAPI(kvs, *kvport, confChangeC, errorC)
+	serveGRPCKVAPI(kvs, *grpcPort, confChangeC, errorC)
 }
