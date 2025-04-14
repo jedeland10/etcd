@@ -71,8 +71,6 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
-
-	putCmd.Flags().IntVar(&requestTimeout, "request-timeout", 60, "Timeout for each request")
 }
 
 func putFunc(cmd *cobra.Command, _ []string) {
@@ -102,7 +100,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 			for op := range requests {
 				limit.Wait(context.Background())
 
-				reqTimeout := 60 * time.Second // or read from your config/spec
+				reqTimeout := 60 * time.Second
 				ctx, cancel := context.WithTimeout(context.Background(), reqTimeout)
 				defer cancel()
 				st := time.Now()
