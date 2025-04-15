@@ -327,7 +327,7 @@ func (c *ServerConfig) ShouldDiscover() bool {
 func (c *ServerConfig) ReqTimeout() time.Duration {
 	// 5s for queue waiting, computation and disk IO delay
 	// + 2 * election timeout for possible leader election
-	return 5*time.Second + 2*time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
+	return 45*time.Second + 2*time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
 func (c *ServerConfig) ElectionTimeout() time.Duration {
