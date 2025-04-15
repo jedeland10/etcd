@@ -102,9 +102,9 @@ func putFunc(cmd *cobra.Command, _ []string) {
 
 				reqTimeout := 60 * time.Second
 				ctx, cancel := context.WithTimeout(context.Background(), reqTimeout)
+				defer cancel()
 				st := time.Now()
 				_, err := c.Do(ctx, op)
-				cancel() // Call cancel() here, once the RPC is done
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
 			}
