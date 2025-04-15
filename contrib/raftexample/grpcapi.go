@@ -105,8 +105,8 @@ func serveGRPCKVAPI(kv *kvstore, port int, confChangeC chan<- raftpb.ConfChange,
 				select {
 				case <-raftAck:
 					atomic.AddUint64(&committedCount, 1)
-				case <-time.After(5 * time.Second):
-					log.Printf("❌ Timed out committing key: %s", k)
+				case <-time.After(15 * time.Second):
+					log.Printf("Timed out committing key: %s", k)
 					atomic.AddUint64(&committedCount, 1)
 				}
 				// Signal that the proposal is complete.
