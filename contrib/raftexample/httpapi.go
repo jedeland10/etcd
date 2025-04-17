@@ -19,7 +19,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -42,13 +41,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ackCh := h.store.proposeToRaft(key, string(v))
-		select {
-		case <-ackCh:
-			w.WriteHeader(http.StatusNoContent)
-		case <-time.After(5 * time.Second):
-			http.Error(w, "Timed out waiting for commit ack", http.StatusGatewayTimeout)
-		}
+		h.store.proposeToRaft(key, string(v))
 	case http.MethodGet:
 		if v, ok := h.store.Lookup(key); ok {
 			w.Write([]byte(v))

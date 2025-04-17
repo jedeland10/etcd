@@ -30,7 +30,7 @@ echo "  - protoc-gen-gofast: ${GOFAST_BIN}"
 echo "  - gogoproto-root:    ${GOGOPROTO_ROOT}"
 
 # Directories containing `.proto` files to be built
-DIRS="./protostore"
+DIRS="./protostore ./raftapi"
 
 log_callout -e "Running gofast (gogo) Protobuf generation for protostore..."
 
@@ -39,6 +39,10 @@ for dir in ${DIRS}; do
 
   protoc --gofast_out=. -I=".:${GOGOPROTO_PATH}:${PWD}/.." \
     --plugin="${GOFAST_BIN}" ./**/*.proto
+
+  protoc --go-grpc_out=. -I=".:${GOGOPROTO_PATH}:${PWD}/.." \
+      --go-grpc_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor \
+      ./**/*.proto
 
   # Fix incorrect import paths (if necessary)
   sed -i.bak -E 's|"protostore"|"go.etcd.io/etcd/v3/protostore"|g' ./**/*.pb.go
@@ -54,4 +58,3 @@ for dir in ${DIRS}; do
 done
 
 log_success -e "Protobuf generation for protostore SUCCESS!"
-

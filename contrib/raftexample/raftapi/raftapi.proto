@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+package raftapi;
+
+// Specify the Go package for generated code.
+option go_package = "../raftapi";
+
+service RaftKVService {
+  // Existing unary methods:
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // New streaming method for high-concurrency proposal submission:
+  rpc StreamProposals(stream PutRequest) returns (stream PutResponse);
+}
+
+message PutRequest {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+message PutResponse {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+message GetRequest {
+  optional string key = 1;
+}
+
+message GetResponse {
+  optional bool found = 1;
+  optional string value = 2;
+}
