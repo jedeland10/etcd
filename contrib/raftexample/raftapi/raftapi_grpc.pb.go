@@ -20,18 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RaftKVService_Put_FullMethodName = "/raftapi.RaftKVService/Put"
-	RaftKVService_Get_FullMethodName = "/raftapi.RaftKVService/Get"
+	RaftKVService_Put_FullMethodName             = "/raftapi.RaftKVService/Put"
+	RaftKVService_Get_FullMethodName             = "/raftapi.RaftKVService/Get"
+	RaftKVService_StreamProposals_FullMethodName = "/raftapi.RaftKVService/StreamProposals"
 )
 
 // RaftKVServiceClient is the client API for RaftKVService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RaftKVServiceClient interface {
-	// Put a key/value pair into the store.
+	// Existing unary methods:
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
-	// Retrieve the value for a given key.
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	// New streaming method for high-concurrency proposal submission:
+	StreamProposals(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PutRequest, PutResponse], error)
 }
 
 type raftKVServiceClient struct {
@@ -62,14 +64,28 @@ func (c *raftKVServiceClient) Get(ctx context.Context, in *GetRequest, opts ...g
 	return out, nil
 }
 
+func (c *raftKVServiceClient) StreamProposals(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PutRequest, PutResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RaftKVService_ServiceDesc.Streams[0], RaftKVService_StreamProposals_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[PutRequest, PutResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RaftKVService_StreamProposalsClient = grpc.BidiStreamingClient[PutRequest, PutResponse]
+
 // RaftKVServiceServer is the server API for RaftKVService service.
 // All implementations must embed UnimplementedRaftKVServiceServer
 // for forward compatibility.
 type RaftKVServiceServer interface {
-	// Put a key/value pair into the store.
+	// Existing unary methods:
 	Put(context.Context, *PutRequest) (*PutResponse, error)
-	// Retrieve the value for a given key.
 	Get(context.Context, *GetRequest) (*GetResponse, error)
+	// New streaming method for high-concurrency proposal submission:
+	StreamProposals(grpc.BidiStreamingServer[PutRequest, PutResponse]) error
 	mustEmbedUnimplementedRaftKVServiceServer()
 }
 
@@ -85,6 +101,9 @@ func (UnimplementedRaftKVServiceServer) Put(context.Context, *PutRequest) (*PutR
 }
 func (UnimplementedRaftKVServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedRaftKVServiceServer) StreamProposals(grpc.BidiStreamingServer[PutRequest, PutResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamProposals not implemented")
 }
 func (UnimplementedRaftKVServiceServer) mustEmbedUnimplementedRaftKVServiceServer() {}
 func (UnimplementedRaftKVServiceServer) testEmbeddedByValue()                       {}
@@ -143,6 +162,13 @@ func _RaftKVService_Get_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RaftKVService_StreamProposals_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RaftKVServiceServer).StreamProposals(&grpc.GenericServerStream[PutRequest, PutResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RaftKVService_StreamProposalsServer = grpc.BidiStreamingServer[PutRequest, PutResponse]
+
 // RaftKVService_ServiceDesc is the grpc.ServiceDesc for RaftKVService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -159,6 +185,13 @@ var RaftKVService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RaftKVService_Get_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamProposals",
+			Handler:       _RaftKVService_StreamProposals_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "raftapi.proto",
 }
