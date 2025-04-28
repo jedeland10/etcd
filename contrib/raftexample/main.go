@@ -35,18 +35,15 @@ func main() {
 	join := flag.Bool("join", false, "join an existing cluster")
 	flag.Parse()
 
-	proposeC := make(chan string)
+	proposeC := make(chan []byte)
 	defer close(proposeC)
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
 
-	// raft provides a commit stream for the proposals from the http api
 	var kvs *kvstore
-	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-	commitC, errorC, snapshotterReady := newRaftNode(*id, strings.Split(*cluster, ","), *join, getSnapshot, proposeC, confChangeC)
+	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, proposeC, confChangeC)
 
-	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
+	kvs = newKVStore(proposeC, commitC, errorC)
 
-	// the key-value http handler will propose updates to raft
 	serveGRPCKVAPI(kvs, *grpcPort, confChangeC, errorC)
 }
