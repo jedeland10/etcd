@@ -55,6 +55,8 @@ var (
 	compactIndexDelta int64
 
 	checkHashkv bool
+
+	requestTimeout int
 )
 
 func init() {
@@ -98,8 +100,11 @@ func putFunc(cmd *cobra.Command, _ []string) {
 			for op := range requests {
 				limit.Wait(context.Background())
 
+				reqTimeout := 60 * time.Second
+				ctx, cancel := context.WithTimeout(context.Background(), reqTimeout)
+				defer cancel()
 				st := time.Now()
-				_, err := c.Do(context.Background(), op)
+				_, err := c.Do(ctx, op)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
 			}
