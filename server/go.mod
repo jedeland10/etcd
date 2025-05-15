@@ -4,7 +4,7 @@ go 1.23
 
 toolchain go1.23.5
 
-replace go.etcd.io/raft/v3 v3.6.0-beta.0 => /Users/johanedeland/Documents/plugg/thesis/raft
+replace go.etcd.io/raft/v3 v3.6.0-beta.0 => github.com/jedeland10/raft v0.0.0-20250413165203-d1f3111c4c50
 
 require (
 	github.com/coreos/go-semver v0.3.1
