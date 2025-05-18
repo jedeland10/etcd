@@ -368,6 +368,25 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	rc.snapshotIndex = rc.appliedIndex
 }
 
+func (rc *raftNode) maybeTriggerCompaction() {
+	// only once per snapCount
+	if rc.appliedIndex <= rc.snapshotIndex ||
+		rc.appliedIndex-rc.snapshotIndex < rc.snapCount {
+		return
+	}
+
+	// advance compaction index to appliedIndex
+	compactIdx := rc.appliedIndex
+
+	// drop everything ≤ compactIdx from MemoryStorage
+	if err := rc.raftStorage.Compact(compactIdx); err != nil && err != raft.ErrCompacted {
+		log.Panicf("compact error: %v", err)
+	}
+	// bump our marker so we don't re‐compact the same tail
+	rc.snapshotIndex = compactIdx
+	log.Printf("compacted in‐memory log through index %d", compactIdx)
+}
+
 func (rc *raftNode) serveChannels() {
 
 	defer rc.wal.Close()
@@ -413,12 +432,12 @@ func (rc *raftNode) serveChannels() {
 		case rd := <-rc.node.Ready():
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rc.processMessages(rd.Messages))
-			applyDoneC, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
+			_, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
 			if !ok {
 				rc.stop()
 				return
 			}
-			rc.maybeTriggerSnapshot(applyDoneC)
+			rc.maybeTriggerCompaction()
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:
