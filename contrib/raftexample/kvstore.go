@@ -15,11 +15,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"sync"
 	"sync/atomic"
 
+	"github.com/gogo/protobuf/proto"
 	"go.etcd.io/etcd/v3/contrib/raftexample/protostore"
 )
 
@@ -168,4 +170,49 @@ func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) 
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)
 	}
+}
+
+var bufPool = sync.Pool{
+	New: func() interface{} { return &bytes.Buffer{} },
+}
+
+// getSnapshot serializes the current kvStore to a snapshot.
+func (s *kvstore) getSnapshot() ([]byte, error) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufPool.Put(buf)
+
+	snapshot := &protostore.KVSnapshot{}
+
+	// Use the Range method to iterate over sync.Map.
+	s.kvStore.Range(func(key, value interface{}) bool {
+		snapshot.Entries = append(snapshot.Entries, &protostore.MyKV{
+			Key:   []byte(key.(string)),
+			Value: []byte(value.(string)),
+		})
+		return true
+	})
+
+	data, err := proto.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Write(data)
+	return buf.Bytes(), nil
+}
+
+// recoverFromSnapshot restores the state from a snapshot.
+func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
+	kvSnap := &protostore.KVSnapshot{}
+	if err := proto.Unmarshal(snapshot, kvSnap); err != nil {
+		return err
+	}
+
+	newKV := sync.Map{}
+	for _, entry := range kvSnap.Entries {
+		newKV.Store(string(entry.Key), string(entry.Value))
+	}
+	s.kvStore = newKV
+	return nil
 }

@@ -41,7 +41,8 @@ func main() {
 	defer close(confChangeC)
 
 	var kvs *kvstore
-	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, proposeC, confChangeC)
+	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
+	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, getSnapshot, proposeC, confChangeC)
 
 	kvs = newKVStore(proposeC, commitC, errorC)
 
