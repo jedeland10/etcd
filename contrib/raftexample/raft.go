@@ -378,7 +378,15 @@ func (rc *raftNode) maybeTriggerCompaction() {
 	// advance compaction index to appliedIndex
 	compactIdx := rc.appliedIndex
 
-	// drop everything ≤ compactIdx from MemoryStorage
+	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := rc.raftStorage.ApplySnapshot(snap); err != nil {
+		log.Panicf("ApplySnapshot error: %v", err)
+	}
+
 	if err := rc.raftStorage.Compact(compactIdx); err != nil && err != raft.ErrCompacted {
 		log.Panicf("compact error: %v", err)
 	}
