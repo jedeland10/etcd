@@ -63,6 +63,7 @@ type raftNode struct {
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
 
+	snapCount uint64
 	transport *rafthttp.Transport
 	stopc     chan struct{} // signals proposal channel closed
 	httpstopc chan struct{} // signals http server to shutdown
@@ -71,14 +72,14 @@ type raftNode struct {
 	logger *zap.Logger
 }
 
-var defaultSnapshotCount uint64 = 10000
+var defaultSnapshotCount uint64 = 200_000
 
 // newRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(id int, peers []string, join bool, proposeC <-chan []byte,
+func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan []byte,
 	confChangeC <-chan raftpb.ConfChange,
 ) (<-chan *commit, <-chan error) {
 	commitC := make(chan *commit)
@@ -93,12 +94,14 @@ func newRaftNode(id int, peers []string, join bool, proposeC <-chan []byte,
 		peers:       peers,
 		join:        join,
 		waldir:      fmt.Sprintf("raftexample-%d", id),
+		snapdir:     fmt.Sprintf("raftexample-%d-snap", id),
+		getSnapshot: getSnapshot,
+		snapCount:   defaultSnapshotCount,
 		stopc:       make(chan struct{}),
 		httpstopc:   make(chan struct{}),
 		httpdonec:   make(chan struct{}),
 
 		logger: zap.NewExample(),
-
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
@@ -111,9 +114,6 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 		Term:      snap.Metadata.Term,
 		ConfState: &snap.Metadata.ConfState,
 	}
-	// save the snapshot file before writing the snapshot to the wal.
-	// This makes it possible for the snapshot file to become orphaned, but prevents
-	// a WAL snapshot entry from having no corresponding snapshot file.
 	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
 		return err
 	}
@@ -249,6 +249,7 @@ func (rc *raftNode) writeError(err error) {
 
 func (rc *raftNode) startRaft() {
 
+	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
 
 	rpeers := make([]raft.Peer, len(rc.peers))
@@ -261,11 +262,15 @@ func (rc *raftNode) startRaft() {
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
 		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           1_000_000,
+		MaxInflightMsgs:           256,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 
-	rc.node = raft.StartNode(c, rpeers)
+	if oldwal || rc.join {
+		rc.node = raft.RestartNode(c)
+	} else {
+		rc.node = raft.StartNode(c, rpeers)
+	}
 
 	rc.transport = &rafthttp.Transport{
 		Logger:      rc.logger,
@@ -323,8 +328,9 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 var snapshotCatchUpEntriesN uint64 = 10000
 
 func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
-	return
-
+	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
+		return
+	}
 	// wait until all committed entries are applied (or server is closed)
 	if applyDoneC != nil {
 		select {
@@ -407,11 +413,12 @@ func (rc *raftNode) serveChannels() {
 		case rd := <-rc.node.Ready():
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rc.processMessages(rd.Messages))
-			_, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
+			applyDoneC, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
 			if !ok {
 				rc.stop()
 				return
 			}
+			rc.maybeTriggerSnapshot(applyDoneC)
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:
