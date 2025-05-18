@@ -369,30 +369,35 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 }
 
 func (rc *raftNode) maybeTriggerCompaction() {
-	// only once per snapCount
-	if rc.appliedIndex <= rc.snapshotIndex ||
-		rc.appliedIndex-rc.snapshotIndex < rc.snapCount {
+	if rc.node.Status().SoftState.Lead != uint64(rc.id) {
+		// only the leader compacts
 		return
 	}
 
-	// advance compaction index to appliedIndex
-	compactIdx := rc.appliedIndex
-
-	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, nil)
-	if err != nil {
-		panic(err)
+	applied := rc.appliedIndex
+	if applied <= rc.snapshotIndex || applied-rc.snapshotIndex < rc.snapCount {
+		// not yet time
+		return
 	}
 
-	if err := rc.raftStorage.ApplySnapshot(snap); err != nil {
-		log.Panicf("ApplySnapshot error: %v", err)
+	// check every follower is already beyond 'applied'
+	st := rc.node.Status()
+	for id, pr := range st.Progress {
+		if uint64(id) == uint64(rc.id) {
+			continue
+		}
+		if pr.Match < applied {
+			// some peer still needs entries ≤ applied
+			return
+		}
 	}
 
-	if err := rc.raftStorage.Compact(compactIdx); err != nil && err != raft.ErrCompacted {
+	// now safe to compact
+	if err := rc.raftStorage.Compact(applied); err != nil && err != raft.ErrCompacted {
 		log.Panicf("compact error: %v", err)
 	}
-	// bump our marker so we don't re‐compact the same tail
-	rc.snapshotIndex = compactIdx
-	log.Printf("compacted in‐memory log through index %d", compactIdx)
+	rc.snapshotIndex = applied
+	log.Printf("compacted in-memory log through index %d", applied)
 }
 
 func (rc *raftNode) serveChannels() {
