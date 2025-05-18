@@ -368,38 +368,6 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	rc.snapshotIndex = rc.appliedIndex
 }
 
-func (rc *raftNode) maybeTriggerCompaction() {
-	if rc.node.Status().SoftState.Lead != uint64(rc.id) {
-		// only the leader compacts
-		return
-	}
-
-	applied := rc.appliedIndex
-	if applied <= rc.snapshotIndex || applied-rc.snapshotIndex < rc.snapCount {
-		// not yet time
-		return
-	}
-
-	// check every follower is already beyond 'applied'
-	st := rc.node.Status()
-	for id, pr := range st.Progress {
-		if uint64(id) == uint64(rc.id) {
-			continue
-		}
-		if pr.Match < applied {
-			// some peer still needs entries ≤ applied
-			return
-		}
-	}
-
-	// now safe to compact
-	if err := rc.raftStorage.Compact(applied); err != nil && err != raft.ErrCompacted {
-		log.Panicf("compact error: %v", err)
-	}
-	rc.snapshotIndex = applied
-	log.Printf("compacted in-memory log through index %d", applied)
-}
-
 func (rc *raftNode) serveChannels() {
 
 	defer rc.wal.Close()
@@ -450,7 +418,6 @@ func (rc *raftNode) serveChannels() {
 				rc.stop()
 				return
 			}
-			rc.maybeTriggerCompaction()
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:
