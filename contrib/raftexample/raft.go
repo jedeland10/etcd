@@ -269,15 +269,13 @@ func (rc *raftNode) startRaft() {
 	rc.node = raft.StartNode(c, rpeers)
 
 	rc.transport = &rafthttp.Transport{
-		Logger:             rc.logger,
-		ID:                 types.ID(rc.id),
-		ClusterID:          0x1000,
-		Raft:               rc,
-		DialTimeout:        10 * time.Second,
-		DialRetryFrequency: rate.Limit(10),
-		ServerStats:        stats.NewServerStats("", ""),
-		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
-		ErrorC:             make(chan error),
+		Logger:      rc.logger,
+		ID:          types.ID(rc.id),
+		ClusterID:   0x1000,
+		Raft:        rc,
+		ServerStats: stats.NewServerStats("", ""),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
+		ErrorC:      make(chan error),
 	}
 
 	rc.transport.Start()

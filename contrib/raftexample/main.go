@@ -18,15 +18,12 @@ import (
 	"flag"
 	"net/http"
 	_ "net/http/pprof"
-	"runtime/debug"
 	"strings"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
 
 func main() {
-	debug.SetGCPercent(300)
-
 	go func() {
 		http.ListenAndServe(":6060", nil)
 	}()
