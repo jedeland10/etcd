@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	connPerPipeline = 16
+	connPerPipeline = 8
 	// pipelineBufSize is the size of pipeline buffer, which helps hold the
 	// temporary network latency.
 	// The size ensures that pipeline does not drop messages when the network
