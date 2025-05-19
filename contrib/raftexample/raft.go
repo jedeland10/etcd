@@ -273,7 +273,7 @@ func (rc *raftNode) startRaft() {
 		ID:                 types.ID(rc.id),
 		ClusterID:          0x1000,
 		Raft:               rc,
-		DialTimeout:        3 * time.Second,
+		DialTimeout:        10 * time.Second,
 		DialRetryFrequency: rate.Limit(10),
 		ServerStats:        stats.NewServerStats("", ""),
 		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
