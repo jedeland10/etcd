@@ -32,7 +32,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-	"golang.org/x/time/rate"
 
 	"go.uber.org/zap"
 )
