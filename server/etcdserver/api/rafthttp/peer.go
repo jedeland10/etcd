@@ -40,14 +40,14 @@ const (
 	DefaultConnReadTimeout  = 5 * time.Second
 	DefaultConnWriteTimeout = 5 * time.Second
 
-	recvBufSize = 1_000_000
+	recvBufSize = 34_000
 	// maxPendingProposals holds the proposals during one leader election process.
 	// Generally one leader election takes at most 1 sec. It should have
 	// 0-2 election conflicts, and each one takes 0.5 sec.
 	// We assume the number of concurrent proposers is smaller than 4096.
 	// One client blocks on its proposal for at least 1 sec, so 4096 is enough
 	// to hold all proposals.
-	maxPendingProposals = 4096
+	maxPendingProposals = 34_000
 
 	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
