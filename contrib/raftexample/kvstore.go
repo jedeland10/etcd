@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -156,10 +157,13 @@ func (s *kvstore) Put(ctx context.Context, key, value string) error {
 
 func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) {
 	for commit := range commitC {
-		for _, data := range commit.data {
+		for i, data := range commit.data {
 			var dataKv protostore.MyKV
 			if err := dataKv.Unmarshal([]byte(data)); err != nil {
-				log.Fatalf("raftexample: could not decode Protobuf message (%v)", err)
+				log.Printf("[DecodeError] Could not decode Protobuf: %v", err)
+				log.Printf("[DecodeError] Raw data (hex): %x", data)
+				log.Printf("[DecodeError] Raw data (base64): %s", base64.StdEncoding.EncodeToString([]byte(data)))
+				log.Printf("[DecodeError] Entry #%d, length: %d", i, len(data))
 			}
 			s.applyWait.Trigger(dataKv.ProposalID, nil)
 		}

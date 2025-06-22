@@ -143,6 +143,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 
 	data := make([]string, 0, len(ents))
 	for i := range ents {
+		fmt.Printf("[Publish] Processing entry index=%d\n", ents[i].Index)
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
 			if len(ents[i].Data) == 0 {
@@ -261,8 +262,9 @@ func (rc *raftNode) startRaft() {
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
 		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           100_000,
+		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
+		EnableUniCache:            true,
 	}
 
 	rc.node = raft.StartNode(c, rpeers)
