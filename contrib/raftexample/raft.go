@@ -143,7 +143,6 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 
 	data := make([]string, 0, len(ents))
 	for i := range ents {
-		fmt.Printf("[Publish] Processing entry index=%d\n", ents[i].Index)
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
 			if len(ents[i].Data) == 0 {
