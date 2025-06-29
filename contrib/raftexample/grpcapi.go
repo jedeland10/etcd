@@ -37,6 +37,11 @@ type grpcKVAPI struct {
 	confChangeC chan<- raftpb.ConfChange
 }
 
+func (s *grpcKVAPI) GetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftapi.CacheHitsResponse, error) {
+	hits := s.store.raftNode.CacheHits()
+	return &raftapi.CacheHitsResponse{Cachehits: proto.Uint64(hits)}, nil
+}
+
 // Put submits a proposal to the underlying key-value store without waiting for a commit ack.
 func (s *grpcKVAPI) Put(ctx context.Context, req *raftapi.PutRequest) (*raftapi.PutResponse, error) {
 	// Call a new Put method on your kvstore that blocks until the proposal is committed.

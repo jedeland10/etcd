@@ -89,16 +89,18 @@ type kvstore struct {
 	proposeC    chan<- []byte
 	applyWait   Wait
 	proposalSeq uint64
+	raftNode    *raftNode
 }
 
 var proposalBufferPool = sync.Pool{
 	New: func() interface{} { return &protostore.MyKV{} },
 }
 
-func newKVStore(proposeC chan []byte, commitC <-chan *commit, errorC <-chan error) *kvstore {
+func newKVStore(proposeC chan []byte, commitC <-chan *commit, errorC <-chan error, rn *raftNode) *kvstore {
 	s := &kvstore{
 		proposeC:  proposeC,
 		applyWait: NewWait(),
+		raftNode:  rn,
 	}
 	go s.readProtoCommits(commitC, errorC)
 	return s

@@ -10,8 +10,8 @@ service RaftKVService {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Get(GetRequest) returns (GetResponse);
 
-  // New streaming method for high-concurrency proposal submission:
-  rpc StreamProposals(stream PutRequest) returns (stream PutResponse);
+  rpc GetCacheHits (Empty) returns (CacheHitsResponse);
+
 }
 
 message PutRequest {
@@ -32,3 +32,9 @@ message GetResponse {
   optional bool found = 1;
   optional string value = 2;
 }
+
+message CacheHitsResponse {
+  optional uint64 cachehits = 1;
+}
+message Empty {}
+

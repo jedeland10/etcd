@@ -40,9 +40,9 @@ func main() {
 	defer close(confChangeC)
 
 	var kvs *kvstore
-	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, proposeC, confChangeC)
+	rc, commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, proposeC, confChangeC)
 
-	kvs = newKVStore(proposeC, commitC, errorC)
+	kvs = newKVStore(proposeC, commitC, errorC, rc)
 
 	serveGRPCKVAPI(kvs, *grpcPort, confChangeC, errorC)
 }

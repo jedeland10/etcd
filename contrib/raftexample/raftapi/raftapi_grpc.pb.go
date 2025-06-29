@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RaftKVService_Put_FullMethodName             = "/raftapi.RaftKVService/Put"
-	RaftKVService_Get_FullMethodName             = "/raftapi.RaftKVService/Get"
-	RaftKVService_StreamProposals_FullMethodName = "/raftapi.RaftKVService/StreamProposals"
+	RaftKVService_Put_FullMethodName          = "/raftapi.RaftKVService/Put"
+	RaftKVService_Get_FullMethodName          = "/raftapi.RaftKVService/Get"
+	RaftKVService_GetCacheHits_FullMethodName = "/raftapi.RaftKVService/GetCacheHits"
 )
 
 // RaftKVServiceClient is the client API for RaftKVService service.
@@ -32,8 +32,7 @@ type RaftKVServiceClient interface {
 	// Existing unary methods:
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
-	// New streaming method for high-concurrency proposal submission:
-	StreamProposals(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PutRequest, PutResponse], error)
+	GetCacheHits(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CacheHitsResponse, error)
 }
 
 type raftKVServiceClient struct {
@@ -64,18 +63,15 @@ func (c *raftKVServiceClient) Get(ctx context.Context, in *GetRequest, opts ...g
 	return out, nil
 }
 
-func (c *raftKVServiceClient) StreamProposals(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PutRequest, PutResponse], error) {
+func (c *raftKVServiceClient) GetCacheHits(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CacheHitsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &RaftKVService_ServiceDesc.Streams[0], RaftKVService_StreamProposals_FullMethodName, cOpts...)
+	out := new(CacheHitsResponse)
+	err := c.cc.Invoke(ctx, RaftKVService_GetCacheHits_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PutRequest, PutResponse]{ClientStream: stream}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type RaftKVService_StreamProposalsClient = grpc.BidiStreamingClient[PutRequest, PutResponse]
 
 // RaftKVServiceServer is the server API for RaftKVService service.
 // All implementations must embed UnimplementedRaftKVServiceServer
@@ -84,8 +80,7 @@ type RaftKVServiceServer interface {
 	// Existing unary methods:
 	Put(context.Context, *PutRequest) (*PutResponse, error)
 	Get(context.Context, *GetRequest) (*GetResponse, error)
-	// New streaming method for high-concurrency proposal submission:
-	StreamProposals(grpc.BidiStreamingServer[PutRequest, PutResponse]) error
+	GetCacheHits(context.Context, *Empty) (*CacheHitsResponse, error)
 	mustEmbedUnimplementedRaftKVServiceServer()
 }
 
@@ -102,8 +97,8 @@ func (UnimplementedRaftKVServiceServer) Put(context.Context, *PutRequest) (*PutR
 func (UnimplementedRaftKVServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedRaftKVServiceServer) StreamProposals(grpc.BidiStreamingServer[PutRequest, PutResponse]) error {
-	return status.Errorf(codes.Unimplemented, "method StreamProposals not implemented")
+func (UnimplementedRaftKVServiceServer) GetCacheHits(context.Context, *Empty) (*CacheHitsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCacheHits not implemented")
 }
 func (UnimplementedRaftKVServiceServer) mustEmbedUnimplementedRaftKVServiceServer() {}
 func (UnimplementedRaftKVServiceServer) testEmbeddedByValue()                       {}
@@ -162,12 +157,23 @@ func _RaftKVService_Get_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RaftKVService_StreamProposals_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(RaftKVServiceServer).StreamProposals(&grpc.GenericServerStream[PutRequest, PutResponse]{ServerStream: stream})
+func _RaftKVService_GetCacheHits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftKVServiceServer).GetCacheHits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RaftKVService_GetCacheHits_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftKVServiceServer).GetCacheHits(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type RaftKVService_StreamProposalsServer = grpc.BidiStreamingServer[PutRequest, PutResponse]
 
 // RaftKVService_ServiceDesc is the grpc.ServiceDesc for RaftKVService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -184,14 +190,11 @@ var RaftKVService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Get",
 			Handler:    _RaftKVService_Get_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "StreamProposals",
-			Handler:       _RaftKVService_StreamProposals_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "GetCacheHits",
+			Handler:    _RaftKVService_GetCacheHits_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "raftapi.proto",
 }
