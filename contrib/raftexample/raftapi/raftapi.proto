@@ -11,7 +11,7 @@ service RaftKVService {
   rpc Get(GetRequest) returns (GetResponse);
 
   rpc GetCacheHits (Empty) returns (CacheHitsResponse);
-
+  rpc ResetCacheHits(Empty) returns (Empty);
 }
 
 message PutRequest {
