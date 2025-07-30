@@ -42,6 +42,12 @@ func (s *grpcKVAPI) GetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftap
 	return &raftapi.CacheHitsResponse{Cachehits: proto.Uint64(hits)}, nil
 }
 
+func (s *grpcKVAPI) ResetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftapi.Empty, error) {
+	s.store.raftNode.ResetCacheHits()
+	log.Println("ResetCacheHits: cache hit counter reset")
+	return &raftapi.Empty{}, nil
+}
+
 // Put submits a proposal to the underlying key-value store without waiting for a commit ack.
 func (s *grpcKVAPI) Put(ctx context.Context, req *raftapi.PutRequest) (*raftapi.PutResponse, error) {
 	// Call a new Put method on your kvstore that blocks until the proposal is committed.
