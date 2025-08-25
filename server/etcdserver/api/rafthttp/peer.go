@@ -47,7 +47,7 @@ const (
 	// We assume the number of concurrent proposers is smaller than 4096.
 	// One client blocks on its proposal for at least 1 sec, so 4096 is enough
 	// to hold all proposals.
-	maxPendingProposals = 34_000
+	maxPendingProposals = 100_000
 
 	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
