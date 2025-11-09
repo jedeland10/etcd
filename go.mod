@@ -14,7 +14,7 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 	go.etcd.io/etcd/server/v3 => ./server
 	go.etcd.io/etcd/tests/v3 => ./tests
-	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20251108210906-fb427d4bb22a
+	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20251109114903-928ff2d259b8
 )
 
 require (
