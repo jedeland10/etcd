@@ -73,14 +73,6 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 h1:VNqngBF40hVlDloBruUehVYC3Ar
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1/go.mod h1:RBRO7fro65R6tjKzYgLAFo0t1QEXY1Dp+i/bvpRiqiQ=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/jedeland10/raft v0.0.0-20260111163622-3e39bec6c095 h1:CruTbbr7c90IcdSDdH5zQnibSE+zdIF3ncNBLQw9Alo=
-github.com/jedeland10/raft v0.0.0-20260111163622-3e39bec6c095/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
-github.com/jedeland10/raft v0.0.0-20260111170637-9388512f6196 h1:Uu9DtHawW5ULoAwT8dENTSr8GAhPSqV1d3PeuO6WKBk=
-github.com/jedeland10/raft v0.0.0-20260111170637-9388512f6196/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
-github.com/jedeland10/raft v0.0.0-20260111172227-42cee4f5a2cb h1:0A+/hq7fGzNlz7ch2CyZgbc2lkdP7Vl75ARasLL79WI=
-github.com/jedeland10/raft v0.0.0-20260111172227-42cee4f5a2cb/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
-github.com/jedeland10/raft v0.0.0-20260111173712-7ed4a5449520 h1:QyhvLQ8ZEJLD+hLijw9G8BsJkEqbPzBN33HqJqpRKLA=
-github.com/jedeland10/raft v0.0.0-20260111173712-7ed4a5449520/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
 github.com/jedeland10/raft v0.0.0-20260111182822-31e1491d7525 h1:wDaBa2C9Ey6pIilRnO0AOL+41DV2T7tY6wg8x1xqirM=
 github.com/jedeland10/raft v0.0.0-20260111182822-31e1491d7525/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
