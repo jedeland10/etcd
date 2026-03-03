@@ -20,6 +20,7 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.etcd.io/etcd/v3/contrib/raftexample/protostore"
 )
@@ -130,23 +131,68 @@ func (s *kvstore) proposeToRaft(key string, value string) {
 }
 
 func (s *kvstore) Put(ctx context.Context, key, value string) error {
+	const maxRetries = 3
+	const retryInterval = 200 * time.Millisecond
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		proposalID := atomic.AddUint64(&s.proposalSeq, 1)
+		waitCh := s.applyWait.Register(proposalID)
+
+		kvMessage := proposalBufferPool.Get().(*protostore.MyKV)
+		kvMessage.Key = []byte(key)
+		kvMessage.Value = []byte(value)
+		kvMessage.ProposalID = proposalID
+		encodedData, err := kvMessage.Marshal()
+		proposalBufferPool.Put(kvMessage)
+		if err != nil {
+			s.applyWait.Trigger(proposalID, nil)
+			return err
+		}
+
+		select {
+		case s.proposeC <- encodedData:
+		case <-ctx.Done():
+			s.applyWait.Trigger(proposalID, nil)
+			return ctx.Err()
+		}
+
+		timer := time.NewTimer(retryInterval)
+		select {
+		case <-waitCh:
+			timer.Stop()
+			return nil
+		case <-timer.C:
+			// Proposal not applied in time — may have been dropped during forwarding.
+			s.applyWait.Trigger(proposalID, nil)
+			continue
+		case <-ctx.Done():
+			timer.Stop()
+			s.applyWait.Trigger(proposalID, nil)
+			return ctx.Err()
+		}
+	}
+
+	// Final attempt: wait on context only (no per-attempt timeout).
 	proposalID := atomic.AddUint64(&s.proposalSeq, 1)
 	waitCh := s.applyWait.Register(proposalID)
 
 	kvMessage := proposalBufferPool.Get().(*protostore.MyKV)
-	defer proposalBufferPool.Put(kvMessage)
 	kvMessage.Key = []byte(key)
 	kvMessage.Value = []byte(value)
 	kvMessage.ProposalID = proposalID
-
 	encodedData, err := kvMessage.Marshal()
+	proposalBufferPool.Put(kvMessage)
 	if err != nil {
+		s.applyWait.Trigger(proposalID, nil)
 		return err
 	}
-	commitMsg := encodedData
 
-	// Send the proposal to Raft.
-	s.proposeC <- commitMsg
+	select {
+	case s.proposeC <- encodedData:
+	case <-ctx.Done():
+		s.applyWait.Trigger(proposalID, nil)
+		return ctx.Err()
+	}
 
 	select {
 	case <-waitCh:

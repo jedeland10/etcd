@@ -271,7 +271,7 @@ func (rc *raftNode) startRaft() {
 		MaxSizePerMsg:             1024 * 1024,
 		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
-		UniCacheSize:              50_000,
+		UniCacheSize:              10_000,
 	}
 
 	rc.node = raft.StartNode(c, rpeers)
@@ -388,8 +388,14 @@ func (rc *raftNode) serveChannels() {
 				if !ok {
 					rc.proposeC = nil
 				} else {
-					// blocks until accepted by raft state machine
-					rc.node.Propose(context.TODO(), []byte(prop))
+					// Retry dropped proposals (e.g. RepliCache eviction miss).
+					for retries := 0; ; retries++ {
+						err := rc.node.Propose(context.TODO(), prop)
+						if err != raft.ErrProposalDropped || retries >= 3 {
+							break
+						}
+						time.Sleep(10 * time.Millisecond)
+					}
 				}
 
 			case cc, ok := <-rc.confChangeC:
