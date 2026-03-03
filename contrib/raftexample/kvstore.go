@@ -132,7 +132,7 @@ func (s *kvstore) proposeToRaft(key string, value string) {
 
 func (s *kvstore) Put(ctx context.Context, key, value string) error {
 	const maxRetries = 3
-	const retryInterval = 200 * time.Millisecond
+	const retryInterval = 2000 * time.Millisecond
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		proposalID := atomic.AddUint64(&s.proposalSeq, 1)
