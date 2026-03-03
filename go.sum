@@ -77,6 +77,8 @@ github.com/jedeland10/raft v0.0.0-20260303113949-2d9a022b9287 h1:wtauVAo6i34gPjQ
 github.com/jedeland10/raft v0.0.0-20260303113949-2d9a022b9287/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
 github.com/jedeland10/raft v0.0.0-20260303121224-4298fe14c112 h1:SMW+IryUzneL2W+I9UkquRbRI+V2ZGRfOTrd35y3wN8=
 github.com/jedeland10/raft v0.0.0-20260303121224-4298fe14c112/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
+github.com/jedeland10/raft v0.0.0-20260303123829-241c85def802 h1:qKGu8BDyrvBOuS1GAC/gN1KKrIE+CADrx26bU8AfEwo=
+github.com/jedeland10/raft v0.0.0-20260303123829-241c85def802/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
 github.com/jedeland10/raft v0.0.0 h1:RiIy3LTOWiGxbKFIzDSjTv/Z7MesbfcwrCRdONk9gRI=
 github.com/jedeland10/raft v0.0.0/go.mod h1:OF1LVeb1N2D7IBFtFkxKUypzeJP/O2cQ7tnNwK7Su30=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
