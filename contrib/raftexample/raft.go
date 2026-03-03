@@ -265,7 +265,7 @@ func (rc *raftNode) startRaft() {
 	}
 	c := &raft.Config{
 		ID:                        uint64(rc.id),
-		ElectionTick:              10,
+		ElectionTick:              300,
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
 		MaxSizePerMsg:             1024 * 1024,
