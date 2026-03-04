@@ -75,6 +75,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jedeland10/raft v0.0.0-20260303232218-79f630b60af4 h1:sj6bveqSPQlW7okaKcilGTDKj9/iarQqtviM70acsBI=
 github.com/jedeland10/raft v0.0.0-20260303232218-79f630b60af4/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
+github.com/jedeland10/raft v0.0.0-20260304183417-467e7e128f71 h1:2vpSvpc7JgTG0BU/oZPRTFfPczDaRBcDiQwW1rsehaU=
+github.com/jedeland10/raft v0.0.0-20260304183417-467e7e128f71/go.mod h1:miLoqoUFLoX6RdghmS90VJ4DHaZgbDFeSdZoCGuKMvs=
 github.com/jonboulle/clockwork v0.5.0 h1:Hyh9A8u51kptdkR+cqRpT1EebBwTn1oK9YfGYbdFz6I=
 github.com/jonboulle/clockwork v0.5.0/go.mod h1:3mZlmanh0g2NDKO5TWZVJAfofYk64M7XN3SzBPjZF60=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
