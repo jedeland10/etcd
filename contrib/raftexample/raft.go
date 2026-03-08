@@ -126,7 +126,11 @@ func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 	}
 	firstIdx := ents[0].Index
 	if firstIdx > rc.appliedIndex+1 {
-		log.Fatalf("first index of committed entry[%d] should <= progress.appliedIndex[%d]+1", firstIdx, rc.appliedIndex)
+		log.Fatalf(
+			"first index of committed entry[%d] should <= progress.appliedIndex[%d]+1",
+			firstIdx,
+			rc.appliedIndex,
+		)
 	}
 	if rc.appliedIndex-firstIdx+1 < uint64(len(ents)) {
 		nents = ents[rc.appliedIndex-firstIdx+1:]
@@ -320,7 +324,11 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	defer log.Printf("finished publishing snapshot at index %d", rc.snapshotIndex)
 
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
-		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
+		log.Fatalf(
+			"snapshot index [%d] should > progress.appliedIndex [%d]",
+			snapshotToSave.Metadata.Index,
+			rc.appliedIndex,
+		)
 	}
 	rc.commitC <- nil // trigger kvstore to load snapshot
 
@@ -343,7 +351,11 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		}
 	}
 
-	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
+	log.Printf(
+		"start snapshot [applied index: %d | last snapshot index: %d]",
+		rc.appliedIndex,
+		rc.snapshotIndex,
+	)
 	data, err := rc.getSnapshot()
 	if err != nil {
 		log.Panic(err)
