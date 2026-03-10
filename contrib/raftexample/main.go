@@ -31,6 +31,7 @@ func main() {
 	cluster := flag.String("cluster", "http://127.0.0.1:9021", "comma separated cluster peers")
 	id := flag.Int("id", 1, "node ID")
 	grpcPort := flag.Int("port", 9121, "key-value server port")
+	dashboardPort := flag.Int("dashboard-port", 0, "dashboard HTTP port (0 = disabled)")
 	join := flag.Bool("join", false, "join an existing cluster")
 	flag.Parse()
 
@@ -43,6 +44,10 @@ func main() {
 	rc, commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), *join, proposeC, confChangeC)
 
 	kvs = newKVStore(proposeC, commitC, errorC, rc)
+
+	if *dashboardPort > 0 {
+		serveDashboard(rc, kvs, *dashboardPort)
+	}
 
 	serveGRPCKVAPI(kvs, *grpcPort, confChangeC, errorC)
 }

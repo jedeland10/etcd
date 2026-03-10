@@ -68,7 +68,8 @@ type raftNode struct {
 	httpstopc chan struct{} // signals http server to shutdown
 	httpdonec chan struct{} // signals http server shutdown complete
 
-	logger *zap.Logger
+	msgStats *messageStats
+	logger   *zap.Logger
 }
 
 var defaultSnapshotCount uint64 = 10000
@@ -97,7 +98,8 @@ func newRaftNode(id int, peers []string, join bool, proposeC <-chan []byte,
 		httpstopc:   make(chan struct{}),
 		httpdonec:   make(chan struct{}),
 
-		logger: zap.NewExample(),
+		msgStats: newMessageStats(),
+		logger:   zap.NewExample(),
 
 		// rest of structure populated after WAL replay
 	}
@@ -433,7 +435,9 @@ func (rc *raftNode) serveChannels() {
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
 			rc.raftStorage.Append(rd.Entries)
-			rc.transport.Send(rc.processMessages(rd.Messages))
+			processed := rc.processMessages(rd.Messages)
+			rc.msgStats.recordSent(processed)
+			rc.transport.Send(processed)
 			_, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
 			if !ok {
 				rc.stop()
@@ -485,6 +489,7 @@ func (rc *raftNode) serveRaft() {
 }
 
 func (rc *raftNode) Process(ctx context.Context, m raftpb.Message) error {
+	rc.msgStats.recordReceived(m)
 	return rc.node.Step(ctx, m)
 }
 func (rc *raftNode) IsIDRemoved(_ uint64) bool   { return false }

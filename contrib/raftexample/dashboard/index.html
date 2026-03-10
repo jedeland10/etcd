@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raft Cluster Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-surface: #111827;
+    --bg-card: #1a2235;
+    --border: #2a3654;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --leader: #f59e0b;
+    --leader-glow: #f59e0b44;
+    --follower: #06b6d4;
+    --follower-glow: #06b6d444;
+    --candidate: #f97316;
+    --candidate-glow: #f9731644;
+    --accent: #8b5cf6;
+    --success: #10b981;
+    --danger: #ef4444;
+    --msg-heartbeat: #06b6d4;
+    --msg-append: #8b5cf6;
+    --msg-vote: #f59e0b;
+    --msg-proposal: #10b981;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  header {
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  .header-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .config-bar {
+    padding: 16px 32px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .config-bar label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .config-bar input {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    width: 200px;
+  }
+
+  .config-bar input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .config-bar button {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover { filter: brightness(1.2); }
+
+  .btn-secondary {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border) !important;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent) !important; }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    min-height: calc(100vh - 130px);
+  }
+
+  /* === CLUSTER CANVAS === */
+  .cluster-view {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse at 30% 40%, #8b5cf610 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 60%, #06b6d408 0%, transparent 60%),
+      var(--bg-deep);
+  }
+
+  canvas#cluster-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .sidebar-section {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+  }
+
+  .sidebar-section h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  .node-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color 0.3s;
+  }
+
+  .node-card.leader { border-color: var(--leader); }
+  .node-card.follower { border-color: var(--follower); }
+  .node-card.candidate { border-color: var(--candidate); }
+  .node-card.offline { opacity: 0.4; }
+
+  .node-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .node-card-header .node-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .node-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .node-badge.leader { background: var(--leader-glow); color: var(--leader); }
+  .node-badge.follower { background: var(--follower-glow); color: var(--follower); }
+  .node-badge.candidate { background: var(--candidate-glow); color: var(--candidate); }
+  .node-badge.offline { background: #ef444422; color: var(--danger); }
+
+  .node-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .node-stat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .node-stat .label { color: var(--text-dim); }
+  .node-stat .value { color: var(--text); font-weight: 500; }
+
+  /* Message log */
+  .msg-log {
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .msg-log::-webkit-scrollbar { width: 4px; }
+  .msg-log::-webkit-scrollbar-track { background: transparent; }
+  .msg-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg-entry {
+    padding: 4px 0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    opacity: 0;
+    animation: msg-fade-in 0.3s ease forwards;
+  }
+
+  @keyframes msg-fade-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .msg-entry .msg-time { color: var(--text-dim); flex-shrink: 0; }
+  .msg-entry .msg-type { font-weight: 600; flex-shrink: 0; }
+  .msg-entry .msg-detail { color: var(--text-dim); }
+  .msg-type.heartbeat { color: var(--msg-heartbeat); }
+  .msg-type.append { color: var(--msg-append); }
+  .msg-type.vote { color: var(--msg-vote); }
+  .msg-type.proposal { color: var(--msg-proposal); }
+
+  /* KV Table */
+  .kv-table {
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .kv-row {
+    display: flex;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kv-row .kv-key {
+    flex: 1;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .kv-row .kv-val {
+    flex: 1;
+    color: var(--text);
+    text-align: right;
+  }
+
+  /* Throughput chart area */
+  .throughput-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 60px;
+  }
+
+  .throughput-bar {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    transition: height 0.3s ease;
+    opacity: 0.7;
+  }
+
+  /* Put form */
+  .put-form {
+    display: flex;
+    gap: 8px;
+  }
+
+  .put-form input {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    flex: 1;
+  }
+
+  .put-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .put-form button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 0.2s;
+  }
+
+  .put-form button:hover { filter: brightness(1.2); }
+
+  .empty-state {
+    color: var(--text-dim);
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+    .cluster-view { min-height: 400px; }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header>
+  <h1><span>raft</span>::dashboard</h1>
+  <div class="header-controls">
+    <div class="status-dot" id="status-dot"></div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim);" id="poll-status">connecting...</span>
+  </div>
+</header>
+
+<div class="config-bar">
+  <label>nodes</label>
+  <input type="text" id="nodes-input" placeholder="localhost:8080,localhost:8081,localhost:8082" />
+  <button class="btn-primary" onclick="applyConfig()">Connect</button>
+  <span style="flex:1"></span>
+  <label>poll</label>
+  <button class="btn-secondary" onclick="setPoll(500)">500ms</button>
+  <button class="btn-secondary" onclick="setPoll(1000)">1s</button>
+  <button class="btn-secondary" onclick="setPoll(2000)">2s</button>
+</div>
+
+<div class="main-grid">
+  <div class="cluster-view">
+    <canvas id="cluster-canvas"></canvas>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-section" id="nodes-section">
+      <h3>Cluster Nodes</h3>
+      <div id="node-cards" class="empty-state">Configure node endpoints above</div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Send Proposal</h3>
+      <div class="put-form">
+        <input type="text" id="put-key" placeholder="key" />
+        <input type="text" id="put-val" placeholder="value" />
+        <button onclick="sendPut()">PUT</button>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Message Throughput</h3>
+      <div class="throughput-bars" id="throughput-bars"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Message Log</h3>
+      <div class="msg-log" id="msg-log">
+        <div class="empty-state">Waiting for data...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let nodeEndpoints = [];
+let nodeData = {};      // id -> latest stats
+let prevData = {};      // id -> previous stats (for diffs)
+let pollInterval = 1000;
+let pollTimer = null;
+let particles = [];     // animated message particles
+let msgLog = [];
+let throughputHistory = new Array(60).fill(0);
+let canvas, ctx;
+let animFrame;
+
+// ============================================================
+// CONFIG
+// ============================================================
+function applyConfig() {
+  const input = document.getElementById('nodes-input').value.trim();
+  if (!input) return;
+  nodeEndpoints = input.split(',').map(s => {
+    s = s.trim();
+    if (!s.startsWith('http')) s = 'http://' + s;
+    return s;
+  });
+  nodeData = {};
+  prevData = {};
+  startPolling();
+}
+
+function setPoll(ms) {
+  pollInterval = ms;
+  if (pollTimer) startPolling();
+}
+
+// ============================================================
+// POLLING
+// ============================================================
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  fetchAll();
+  pollTimer = setInterval(fetchAll, pollInterval);
+}
+
+async function fetchAll() {
+  const results = await Promise.allSettled(
+    nodeEndpoints.map(ep =>
+      fetch(ep + '/api/stats', { signal: AbortSignal.timeout(3000) })
+        .then(r => r.json())
+    )
+  );
+
+  let anyOk = false;
+  results.forEach((r, i) => {
+    const key = 'node-' + i;
+    if (r.status === 'fulfilled') {
+      anyOk = true;
+      prevData[key] = nodeData[key] || null;
+      nodeData[key] = r.value;
+      nodeData[key]._endpoint = nodeEndpoints[i];
+      nodeData[key]._online = true;
+    } else {
+      if (nodeData[key]) {
+        nodeData[key]._online = false;
+      } else {
+        nodeData[key] = { id: i + 1, _endpoint: nodeEndpoints[i], _online: false };
+      }
+    }
+  });
+
+  const dot = document.getElementById('status-dot');
+  const status = document.getElementById('poll-status');
+  if (anyOk) {
+    dot.style.background = 'var(--success)';
+    status.textContent = 'live';
+  } else {
+    dot.style.background = 'var(--danger)';
+    status.textContent = 'disconnected';
+  }
+
+  computeDiffs();
+  renderNodeCards();
+  updateThroughput();
+}
+
+function computeDiffs() {
+  Object.keys(nodeData).forEach(key => {
+    const cur = nodeData[key];
+    const prev = prevData[key];
+    if (!cur || !prev || !cur.messages || !prev.messages) return;
+
+    const curSent = cur.messages.peerSent || {};
+    const prevSent = prev.messages.peerSent || {};
+
+    Object.keys(curSent).forEach(peerId => {
+      const curTypes = curSent[peerId] || {};
+      const prevTypes = (prevSent[peerId]) || {};
+      Object.keys(curTypes).forEach(msgType => {
+        const diff = (curTypes[msgType] || 0) - (prevTypes[msgType] || 0);
+        if (diff > 0) {
+          spawnParticles(cur.id, parseInt(peerId), msgType, diff);
+          addLogEntry(cur.id, parseInt(peerId), msgType, diff);
+        }
+      });
+    });
+  });
+}
+
+// ============================================================
+// RENDERING - NODE CARDS
+// ============================================================
+function renderNodeCards() {
+  const container = document.getElementById('node-cards');
+  const keys = Object.keys(nodeData).sort();
+  if (keys.length === 0) {
+    container.innerHTML = '<div class="empty-state">Configure node endpoints above</div>';
+    return;
+  }
+
+  container.innerHTML = keys.map(key => {
+    const d = nodeData[key];
+    const online = d._online;
+    const state = online ? (d.state || 'unknown').toLowerCase() : 'offline';
+    const stateClass = state === 'stateleader' ? 'leader'
+      : state === 'statefollower' ? 'follower'
+      : state === 'statecandidate' ? 'candidate' : 'offline';
+    const stateLabel = state === 'stateleader' ? 'Leader'
+      : state === 'statefollower' ? 'Follower'
+      : state === 'statecandidate' ? 'Candidate' : 'Offline';
+
+    return `
+      <div class="node-card ${stateClass}">
+        <div class="node-card-header">
+          <span class="node-name">Node ${d.id || '?'}</span>
+          <span class="node-badge ${stateClass}">${stateLabel}</span>
+        </div>
+        ${online ? `
+        <div class="node-stats">
+          <div class="node-stat"><span class="label">term</span> <span class="value">${d.term || 0}</span></div>
+          <div class="node-stat"><span class="label">leader</span> <span class="value">${d.leader || '-'}</span></div>
+          <div class="node-stat"><span class="label">commit</span> <span class="value">${d.commit || 0}</span></div>
+          <div class="node-stat"><span class="label">applied</span> <span class="value">${d.applied || 0}</span></div>
+          <div class="node-stat"><span class="label">kv count</span> <span class="value">${d.kvCount || 0}</span></div>
+          <div class="node-stat"><span class="label">msgs sent</span> <span class="value">${d.messages?.totalSent || 0}</span></div>
+        </div>` : '<div class="node-stats"><div class="node-stat"><span class="label">unreachable</span></div></div>'}
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// THROUGHPUT
+// ============================================================
+function updateThroughput() {
+  let totalNew = 0;
+  Object.keys(nodeData).forEach(key => {
+    const cur = nodeData[key];
+    const prev = prevData[key];
+    if (cur?.messages && prev?.messages) {
+      totalNew += (cur.messages.totalSent || 0) - (prev.messages.totalSent || 0);
+    }
+  });
+  throughputHistory.push(totalNew);
+  if (throughputHistory.length > 60) throughputHistory.shift();
+
+  const container = document.getElementById('throughput-bars');
+  const max = Math.max(1, ...throughputHistory);
+  container.innerHTML = throughputHistory.map(v => {
+    const h = Math.max(2, (v / max) * 58);
+    return `<div class="throughput-bar" style="height:${h}px"></div>`;
+  }).join('');
+}
+
+// ============================================================
+// MESSAGE LOG
+// ============================================================
+function addLogEntry(from, to, type_, count) {
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const typeClass = type_.includes('Heartbeat') || type_.includes('MsgHeartbeat') ? 'heartbeat'
+    : type_.includes('App') ? 'append'
+    : type_.includes('Vote') ? 'vote' : 'proposal';
+  const shortType = type_.replace('Msg', '');
+
+  msgLog.unshift({ time, from, to, type: shortType, typeClass, count });
+  if (msgLog.length > 100) msgLog.pop();
+  renderLog();
+}
+
+function renderLog() {
+  const container = document.getElementById('msg-log');
+  if (msgLog.length === 0) {
+    container.innerHTML = '<div class="empty-state">Waiting for data...</div>';
+    return;
+  }
+  container.innerHTML = msgLog.slice(0, 50).map(e => `
+    <div class="msg-entry">
+      <span class="msg-time">${e.time}</span>
+      <span class="msg-type ${e.typeClass}">${e.type}</span>
+      <span class="msg-detail">${e.from}->${e.to} x${e.count}</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// CANVAS - CLUSTER VISUALIZATION
+// ============================================================
+function initCanvas() {
+  canvas = document.getElementById('cluster-canvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  animate();
+}
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+function getNodePositions() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const count = Object.keys(nodeData).length || 3;
+  const radius = Math.min(cx, cy) * 0.55;
+  const positions = {};
+
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
+    positions['node-' + i] = {
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    };
+  }
+  return positions;
+}
+
+function spawnParticles(fromId, toId, msgType, count) {
+  const clampCount = Math.min(count, 8);
+  for (let i = 0; i < clampCount; i++) {
+    particles.push({
+      fromKey: 'node-' + (fromId - 1),
+      toKey: 'node-' + (toId - 1),
+      t: -i * 0.08,
+      speed: 0.015 + Math.random() * 0.01,
+      type: msgType,
+    });
+  }
+}
+
+function animate() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const pos = getNodePositions();
+  const keys = Object.keys(pos);
+
+  // Draw connections
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      const a = pos[keys[i]], b = pos[keys[j]];
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = '#2a365422';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // Animate particles
+  particles = particles.filter(p => {
+    p.t += p.speed;
+    if (p.t > 1) return false;
+    if (p.t < 0) return true;
+
+    const from = pos[p.fromKey];
+    const to = pos[p.toKey];
+    if (!from || !to) return false;
+
+    const x = from.x + (to.x - from.x) * p.t;
+    const y = from.y + (to.y - from.y) * p.t;
+
+    const color = p.type.includes('Heartbeat') || p.type === 'MsgHeartbeat' ? 'var(--msg-heartbeat)'
+      : p.type.includes('App') ? 'var(--msg-append)'
+      : p.type.includes('Vote') ? 'var(--msg-vote)' : 'var(--msg-proposal)';
+
+    // Resolve CSS variable
+    const resolvedColor = p.type.includes('Heartbeat') || p.type === 'MsgHeartbeat' ? '#06b6d4'
+      : p.type.includes('App') ? '#8b5cf6'
+      : p.type.includes('Vote') ? '#f59e0b' : '#10b981';
+
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = resolvedColor;
+    ctx.fill();
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = resolvedColor + '33';
+    ctx.fill();
+
+    return true;
+  });
+
+  // Draw nodes
+  keys.forEach(key => {
+    const p = pos[key];
+    const d = nodeData[key];
+    const online = d?._online;
+    const state = online ? (d?.state || '').toLowerCase() : 'offline';
+    const isLeader = state === 'stateleader';
+    const isCandidate = state === 'statecandidate';
+
+    const color = isLeader ? '#f59e0b'
+      : isCandidate ? '#f97316'
+      : online ? '#06b6d4' : '#ef4444';
+
+    // Outer glow for leader
+    if (isLeader) {
+      const grad = ctx.createRadialGradient(p.x, p.y, 20, p.x, p.y, 55);
+      grad.addColorStop(0, '#f59e0b22');
+      grad.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 55, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 28, 0, Math.PI * 2);
+    ctx.fillStyle = '#111827';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isLeader ? 3 : 2;
+    ctx.stroke();
+
+    // Inner fill
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 24, 0, Math.PI * 2);
+    ctx.fillStyle = color + '18';
+    ctx.fill();
+
+    // Node ID
+    ctx.fillStyle = color;
+    ctx.font = "bold 16px 'JetBrains Mono', monospace";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(d?.id || '?', p.x, p.y);
+
+    // Label below
+    const label = isLeader ? 'LEADER'
+      : isCandidate ? 'CANDIDATE'
+      : online ? 'FOLLOWER' : 'OFFLINE';
+    ctx.fillStyle = color + 'aa';
+    ctx.font = "500 10px 'JetBrains Mono', monospace";
+    ctx.fillText(label, p.x, p.y + 42);
+  });
+
+  // Legend
+  const legendItems = [
+    { color: '#8b5cf6', label: 'Append' },
+    { color: '#06b6d4', label: 'Heartbeat' },
+    { color: '#f59e0b', label: 'Vote' },
+    { color: '#10b981', label: 'Other' },
+  ];
+  ctx.font = "11px 'JetBrains Mono', monospace";
+  ctx.textAlign = 'left';
+  legendItems.forEach((item, i) => {
+    const x = 20, y = 20 + i * 20;
+    ctx.beginPath();
+    ctx.arc(x + 5, y + 1, 4, 0, Math.PI * 2);
+    ctx.fillStyle = item.color;
+    ctx.fill();
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(item.label, x + 16, y + 5);
+  });
+
+  animFrame = requestAnimationFrame(animate);
+}
+
+// ============================================================
+// SEND PUT (via first reachable node)
+// ============================================================
+async function sendPut() {
+  const key = document.getElementById('put-key').value.trim();
+  const val = document.getElementById('put-val').value.trim();
+  if (!key || !val) return;
+
+  // Find first online node
+  const ep = nodeEndpoints[0];
+  if (!ep) return;
+
+  try {
+    // Use the HTTP PUT API (legacy) since we can't do gRPC from browser
+    await fetch(ep + '/' + encodeURIComponent(key), {
+      method: 'PUT',
+      body: val,
+    });
+    addLogEntry(0, 0, 'Proposal', 1);
+    document.getElementById('put-key').value = '';
+    document.getElementById('put-val').value = '';
+  } catch (e) {
+    console.error('PUT failed:', e);
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  initCanvas();
+
+  // Auto-detect: try common ports
+  const host = window.location.hostname || 'localhost';
+  const port = window.location.port;
+  if (port) {
+    // We're being served by a node — check for multi-node setup
+    const p = parseInt(port);
+    const guesses = [p, p + 1, p + 2].map(pp => `${host}:${pp}`);
+    document.getElementById('nodes-input').value = guesses.join(',');
+  } else {
+    document.getElementById('nodes-input').value = 'localhost:9080,localhost:9081,localhost:9082';
+  }
+});
+</script>
+</body>
+</html>
