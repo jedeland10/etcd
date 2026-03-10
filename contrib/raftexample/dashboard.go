@@ -16,7 +16,7 @@ import (
 //go:embed dashboard/index.html
 var dashboardFS embed.FS
 
-// messageStats tracks inter-node message counts.
+// messageStats tracks inter-node message counts and byte volumes.
 type messageStats struct {
 	mu       sync.RWMutex
 	sent     map[string]uint64
@@ -24,20 +24,27 @@ type messageStats struct {
 	// Per-peer sent counts: peerID -> msgType -> count
 	peerSent map[uint64]map[string]uint64
 	// Per-peer received counts
-	peerRecv     map[uint64]map[string]uint64
-	totalSent    uint64
-	totalRecv    uint64
+	peerRecv map[uint64]map[string]uint64
+	// Byte volumes
+	bytesSent     uint64
+	bytesRecv     uint64
+	peerBytesSent map[uint64]uint64
+	peerBytesRecv map[uint64]uint64
+	totalSent     uint64
+	totalRecv     uint64
 	proposalsSent uint64
-	lastReset    time.Time
+	lastReset     time.Time
 }
 
 func newMessageStats() *messageStats {
 	return &messageStats{
-		sent:      make(map[string]uint64),
-		received:  make(map[string]uint64),
-		peerSent:  make(map[uint64]map[string]uint64),
-		peerRecv:  make(map[uint64]map[string]uint64),
-		lastReset: time.Now(),
+		sent:          make(map[string]uint64),
+		received:      make(map[string]uint64),
+		peerSent:      make(map[uint64]map[string]uint64),
+		peerRecv:      make(map[uint64]map[string]uint64),
+		peerBytesSent: make(map[uint64]uint64),
+		peerBytesRecv: make(map[uint64]uint64),
+		lastReset:     time.Now(),
 	}
 }
 
@@ -50,8 +57,11 @@ func (ms *messageStats) recordSent(msgs []raftpb.Message) {
 	defer ms.mu.Unlock()
 	for _, m := range msgs {
 		name := msgTypeName(m.Type)
+		size := uint64(m.Size())
 		ms.sent[name]++
 		ms.totalSent++
+		ms.bytesSent += size
+		ms.peerBytesSent[m.To] += size
 		if ms.peerSent[m.To] == nil {
 			ms.peerSent[m.To] = make(map[string]uint64)
 		}
@@ -63,8 +73,11 @@ func (ms *messageStats) recordReceived(m raftpb.Message) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	name := msgTypeName(m.Type)
+	size := uint64(m.Size())
 	ms.received[name]++
 	ms.totalRecv++
+	ms.bytesRecv += size
+	ms.peerBytesRecv[m.From] += size
 	if ms.peerRecv[m.From] == nil {
 		ms.peerRecv[m.From] = make(map[string]uint64)
 	}
@@ -104,15 +117,28 @@ func (ms *messageStats) snapshot() map[string]interface{} {
 		}
 	}
 
+	peerBytesSentCopy := make(map[string]uint64, len(ms.peerBytesSent))
+	for id, v := range ms.peerBytesSent {
+		peerBytesSentCopy[fmt.Sprintf("%d", id)] = v
+	}
+	peerBytesRecvCopy := make(map[string]uint64, len(ms.peerBytesRecv))
+	for id, v := range ms.peerBytesRecv {
+		peerBytesRecvCopy[fmt.Sprintf("%d", id)] = v
+	}
+
 	return map[string]interface{}{
-		"sent":           sentCopy,
-		"received":       recvCopy,
-		"peerSent":       peerSentCopy,
-		"peerReceived":   peerRecvCopy,
-		"totalSent":      ms.totalSent,
-		"totalReceived":  ms.totalRecv,
-		"proposalsSent":  atomic.LoadUint64(&ms.proposalsSent),
-		"uptimeSeconds":  time.Since(ms.lastReset).Seconds(),
+		"sent":              sentCopy,
+		"received":          recvCopy,
+		"peerSent":          peerSentCopy,
+		"peerReceived":      peerRecvCopy,
+		"totalSent":         ms.totalSent,
+		"totalReceived":     ms.totalRecv,
+		"bytesSent":         ms.bytesSent,
+		"bytesReceived":     ms.bytesRecv,
+		"peerBytesSent":     peerBytesSentCopy,
+		"peerBytesReceived": peerBytesRecvCopy,
+		"proposalsSent":     atomic.LoadUint64(&ms.proposalsSent),
+		"uptimeSeconds":     time.Since(ms.lastReset).Seconds(),
 	}
 }
 
