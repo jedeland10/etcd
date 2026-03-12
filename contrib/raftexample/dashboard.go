@@ -154,6 +154,7 @@ type nodeStatsJSON struct {
 	KVCount      int                    `json:"kvCount"`
 	Messages     map[string]interface{} `json:"messages"`
 	Progress     map[string]interface{} `json:"progress,omitempty"`
+	Cache        map[string]interface{} `json:"cache"`
 }
 
 func (rc *raftNode) getStats(kvs *kvstore) nodeStatsJSON {
@@ -172,6 +173,19 @@ func (rc *raftNode) getStats(kvs *kvstore) nodeStatsJSON {
 		})
 	}
 
+	cacheHits := rc.node.CacheHits()
+	proposalsSent := atomic.LoadUint64(&rc.msgStats.proposalsSent)
+
+	cacheStats := map[string]interface{}{
+		"hits":      cacheHits,
+		"proposals": proposalsSent,
+	}
+	if proposalsSent > 0 {
+		cacheStats["hitRate"] = float64(cacheHits) / float64(proposalsSent)
+	} else {
+		cacheStats["hitRate"] = 0.0
+	}
+
 	stats := nodeStatsJSON{
 		ID:       status.ID,
 		Leader:   status.Lead,
@@ -182,6 +196,7 @@ func (rc *raftNode) getStats(kvs *kvstore) nodeStatsJSON {
 		Peers:    peers,
 		KVCount:  kvCount,
 		Messages: rc.msgStats.snapshot(),
+		Cache:    cacheStats,
 	}
 
 	// Include replication progress if this node is leader
@@ -189,10 +204,12 @@ func (rc *raftNode) getStats(kvs *kvstore) nodeStatsJSON {
 		progress := make(map[string]interface{})
 		for id, pr := range status.Progress {
 			progress[fmt.Sprintf("%d", id)] = map[string]interface{}{
-				"match":  pr.Match,
-				"next":   pr.Next,
-				"state":  pr.State.String(),
-				"active": pr.RecentActive,
+				"match":       pr.Match,
+				"next":        pr.Next,
+				"state":       pr.State.String(),
+				"active":      pr.RecentActive,
+				"cacheIdx":    pr.CacheIdx,
+				"nextCacheId": pr.NextCacheId,
 			}
 		}
 		stats.Progress = progress
@@ -209,6 +226,34 @@ func serveDashboard(rc *raftNode, kvs *kvstore, port int) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		json.NewEncoder(w).Encode(rc.getStats(kvs))
+	})
+
+	// PUT handler for proposals via dashboard
+	mux.HandleFunc("/api/put", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			return
+		}
+		if r.Method != "POST" {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Key == "" {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := kvs.Put(r.Context(), req.Key, req.Value); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
 	// Dashboard HTML

@@ -402,6 +402,7 @@ func (rc *raftNode) serveChannels() {
 				if !ok {
 					rc.proposeC = nil
 				} else {
+					rc.msgStats.recordProposal()
 					// Retry dropped proposals (e.g. RepliCache eviction miss).
 					for retries := 0; ; retries++ {
 						err := rc.node.Propose(context.TODO(), prop)

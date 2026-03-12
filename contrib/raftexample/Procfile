@@ -1,4 +1,6 @@
 # Use goreman to run `go install github.com/mattn/goreman@latest`
-raftexample1: ./raftexample --id 1 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379 --port 12380 --dashboard-port 9080
-raftexample2: ./raftexample --id 2 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379 --port 22380 --dashboard-port 9081
-raftexample3: ./raftexample --id 3 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379 --port 32380 --dashboard-port 9082
+raftexample1: ./raftexample --id 1 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379,http://127.0.0.1:42379,http://127.0.0.1:52379 --port 12380 --dashboard-port 9080
+raftexample2: ./raftexample --id 2 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379,http://127.0.0.1:42379,http://127.0.0.1:52379 --port 22380 --dashboard-port 9081
+raftexample3: ./raftexample --id 3 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379,http://127.0.0.1:42379,http://127.0.0.1:52379 --port 32380 --dashboard-port 9082
+raftexample4: ./raftexample --id 4 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379,http://127.0.0.1:42379,http://127.0.0.1:52379 --port 42380 --dashboard-port 9083
+raftexample5: ./raftexample --id 5 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379,http://127.0.0.1:42379,http://127.0.0.1:52379 --port 52380 --dashboard-port 9084

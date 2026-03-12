@@ -129,8 +129,10 @@
   .main-grid {
     display: grid;
     grid-template-columns: 1fr 340px;
+    grid-template-rows: 1fr;
     gap: 0;
-    min-height: calc(100vh - 100px);
+    height: calc(100vh - 92px);
+    overflow: hidden;
   }
 
   .cluster-view {
@@ -138,6 +140,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     background:
       radial-gradient(ellipse at 30% 40%, #8b5cf610 0%, transparent 60%),
       radial-gradient(ellipse at 70% 60%, #06b6d408 0%, transparent 60%),
@@ -151,6 +154,7 @@
     border-left: 1px solid var(--border);
     overflow-y: auto;
     overflow-x: hidden;
+    min-height: 0;
   }
 
   .sidebar-section {
@@ -373,8 +377,107 @@
     padding: 12px;
   }
 
+  /* Cache gauge */
+  .cache-gauge-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+
+  .cache-ring {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+  }
+
+  .cache-ring svg { transform: rotate(-90deg); }
+
+  .cache-ring-bg {
+    fill: none;
+    stroke: var(--bg-deep);
+    stroke-width: 5;
+  }
+
+  .cache-ring-fg {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease, stroke 0.3s;
+  }
+
+  .cache-ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .cache-ring-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cache-ring-meta .cache-big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .cache-ring-meta .cache-dim {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .cache-sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 32px;
+    margin-top: 8px;
+  }
+
+  .cache-spark-bar {
+    flex: 1;
+    border-radius: 1px 1px 0 0;
+    min-height: 1px;
+    transition: height 0.3s ease;
+  }
+
+  .cache-follower-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    margin-top: 5px;
+  }
+
+  .cache-follower-row .cf-label { color: var(--text-dim); width: 52px; flex-shrink: 0; }
+  .cache-follower-row .cf-bar-wrap {
+    flex: 1;
+    height: 5px;
+    background: var(--bg-deep);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .cache-follower-row .cf-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .cache-follower-row .cf-value { color: var(--text); font-weight: 500; width: 32px; text-align: right; flex-shrink: 0; }
+
   @media (max-width: 900px) {
-    .main-grid { grid-template-columns: 1fr; }
+    .main-grid { grid-template-columns: 1fr; height: auto; overflow: auto; }
     .cluster-view { min-height: 400px; }
   }
 </style>
@@ -408,6 +511,10 @@
     <div class="sidebar-section">
       <h3>Cluster Nodes</h3>
       <div id="node-cards" class="empty-state">Configure node endpoints above</div>
+    </div>
+    <div class="sidebar-section">
+      <h3>RepliCache</h3>
+      <div id="cache-stats" class="empty-state">Waiting for data...</div>
     </div>
     <div class="sidebar-section">
       <h3>Data Volume</h3>
@@ -446,6 +553,9 @@ let pollTimer = null;
 let particles = [];
 let msgLog = [];
 let throughputHistory = new Array(60).fill(0);
+let cacheHitRateHistory = new Array(40).fill(0);
+let prevCacheHits = {};
+let prevCacheProposals = {};
 let canvas, ctx;
 
 // ============================================================
@@ -484,6 +594,11 @@ function applyConfig() {
   });
   nodeData = {};
   prevData = {};
+  // Pre-populate nodeData for all endpoints so canvas/cards render immediately
+  nodeEndpoints.forEach((ep, i) => {
+    nodeData['node-' + i] = { id: i + 1, _endpoint: ep, _online: false };
+  });
+  renderNodeCards();
   startPolling();
 }
 
@@ -530,6 +645,7 @@ async function fetchAll() {
 
   computeDiffs();
   renderNodeCards();
+  renderCacheStats();
   renderDataVolume();
   updateThroughput();
 }
@@ -588,6 +704,124 @@ function renderNodeCards() {
       </div>
     `;
   }).join('');
+}
+
+// ============================================================
+// CACHE STATS
+// ============================================================
+function renderCacheStats() {
+  const container = document.getElementById('cache-stats');
+  const keys = Object.keys(nodeData).sort();
+  const online = keys.filter(k => nodeData[k]?._online && nodeData[k]?.cache);
+
+  if (online.length === 0) {
+    container.innerHTML = '<div class="empty-state">Waiting for data...</div>';
+    return;
+  }
+
+  // Find the leader — only the leader performs cache encoding
+  let leaderData = null;
+  let leaderKey = null;
+  online.forEach(k => {
+    const d = nodeData[k];
+    if (d.progress) { leaderData = d; leaderKey = k; }
+  });
+
+  // Use leader's cache stats (only node that encodes); fall back to highest-hit node
+  let cacheSource = leaderData;
+  let cacheSourceKey = leaderKey;
+  if (!cacheSource) {
+    let maxHits = -1;
+    online.forEach(k => {
+      const h = nodeData[k].cache?.hits || 0;
+      if (h > maxHits) { maxHits = h; cacheSource = nodeData[k]; cacheSourceKey = k; }
+    });
+  }
+
+  const totalHits = cacheSource?.cache?.hits || 0;
+  const totalProposals = cacheSource?.cache?.proposals || 0;
+
+  // Compute delta hit rate for sparkline
+  const prevH = prevCacheHits[cacheSourceKey] || 0;
+  const prevP = prevCacheProposals[cacheSourceKey] || 0;
+  const deltaHits = totalHits - prevH;
+  const deltaProposals = totalProposals - prevP;
+  if (cacheSourceKey) {
+    prevCacheHits[cacheSourceKey] = totalHits;
+    prevCacheProposals[cacheSourceKey] = totalProposals;
+  }
+  // Normalize: leader encodes once per follower, so max hits = proposals * (peers-1)
+  const numFollowers = Math.max(1, nodeEndpoints.length - 1);
+  const deltaMax = deltaProposals * numFollowers;
+  const deltaRate = deltaMax > 0 ? Math.min(1, deltaHits / deltaMax) : 0;
+  cacheHitRateHistory.push(deltaRate);
+  if (cacheHitRateHistory.length > 40) cacheHitRateHistory.shift();
+
+  // Overall hit rate
+  const maxPossibleHits = totalProposals * numFollowers;
+  const hitRate = maxPossibleHits > 0 ? Math.min(1, totalHits / maxPossibleHits) : 0;
+  const pct = Math.round(hitRate * 100);
+
+  // Ring gauge color
+  const ringColor = pct >= 70 ? 'var(--success)' : pct >= 30 ? 'var(--leader)' : 'var(--danger)';
+  const circ = 2 * Math.PI * 27;
+  const dashOffset = circ * (1 - hitRate);
+
+  let html = `
+    <div class="cache-gauge-wrap">
+      <div class="cache-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="cache-ring-bg" cx="32" cy="32" r="27"/>
+          <circle class="cache-ring-fg" cx="32" cy="32" r="27"
+            stroke="${ringColor}"
+            stroke-dasharray="${circ.toFixed(1)}"
+            stroke-dashoffset="${dashOffset.toFixed(1)}"/>
+        </svg>
+        <div class="cache-ring-label" style="color:${ringColor}">${pct}%</div>
+      </div>
+      <div class="cache-ring-meta">
+        <div class="cache-big">${totalHits.toLocaleString()} hits / ${totalProposals.toLocaleString()} proposals</div>
+        <div class="cache-dim">cluster-wide cumulative hit rate</div>
+      </div>
+    </div>
+  `;
+
+  // Sparkline: recent hit rate per interval
+  html += '<div style="margin-bottom:2px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">hit rate over time</span></div>';
+  html += '<div class="cache-sparkline">';
+  cacheHitRateHistory.forEach(v => {
+    const h = Math.max(1, v * 30);
+    const c = v >= 0.7 ? 'var(--success)' : v >= 0.3 ? 'var(--leader)' : 'var(--danger)';
+    html += `<div class="cache-spark-bar" style="height:${h}px;background:${c};opacity:0.8"></div>`;
+  });
+  html += '</div>';
+
+  // Per-follower cache sync (only on leader)
+  if (leaderData && leaderData.progress) {
+    const prog = leaderData.progress;
+    const ids = Object.keys(prog).sort();
+    // Find max commit for normalization
+    const maxCommit = leaderData.commit || 1;
+
+    html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">';
+    html += '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">follower cache sync</div>';
+    ids.forEach(id => {
+      const p = prog[id];
+      const cacheIdx = p.cacheIdx || 0;
+      const pct = maxCommit > 0 ? Math.min(100, (cacheIdx / maxCommit) * 100) : 0;
+      const color = pct >= 90 ? 'var(--success)' : pct >= 50 ? 'var(--leader)' : 'var(--danger)';
+      html += `
+        <div class="cache-follower-row">
+          <span class="cf-label">node ${id}</span>
+          <div class="cf-bar-wrap"><div class="cf-bar" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
+          <span class="cf-value">${cacheIdx}</span>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
 }
 
 // ============================================================
@@ -751,8 +985,10 @@ function resizeCanvas() {
 function getNodePositions() {
   const rect = canvas.parentElement.getBoundingClientRect();
   const cx = rect.width / 2, cy = rect.height / 2;
-  const count = Object.keys(nodeData).length || 3;
-  const radius = Math.min(cx, cy) * 0.55;
+  const count = nodeEndpoints.length || Object.keys(nodeData).length || 3;
+  // Reserve padding for node circle (28) + labels below (~60px)
+  const pad = 90;
+  const radius = Math.min(cx - pad, cy - pad) * 0.85;
   const positions = {};
   for (let i = 0; i < count; i++) {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
@@ -932,10 +1168,16 @@ async function sendPut() {
   const val = document.getElementById('put-val').value.trim();
   if (!key || !val || !nodeEndpoints[0]) return;
   try {
-    await fetch(nodeEndpoints[0] + '/' + encodeURIComponent(key), { method: 'PUT', body: val });
-    addLogEntry(0, 0, 'Proposal', 1);
-    document.getElementById('put-key').value = '';
-    document.getElementById('put-val').value = '';
+    const resp = await fetch(nodeEndpoints[0] + '/api/put', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value: val }),
+    });
+    if (resp.ok) {
+      addLogEntry(0, 0, 'Proposal', 1);
+      document.getElementById('put-key').value = '';
+      document.getElementById('put-val').value = '';
+    }
   } catch (e) { console.error('PUT failed:', e); }
 }
 
@@ -944,14 +1186,12 @@ async function sendPut() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
   initCanvas();
+  // Default: 5-node cluster on ports 9080-9084 (matches Procfile)
   const host = window.location.hostname || 'localhost';
-  const port = window.location.port;
-  if (port) {
-    const p = parseInt(port);
-    document.getElementById('nodes-input').value = [p, p+1, p+2].map(pp => host+':'+pp).join(',');
-  } else {
-    document.getElementById('nodes-input').value = 'localhost:9080,localhost:9081,localhost:9082';
-  }
+  document.getElementById('nodes-input').value =
+    [9080, 9081, 9082, 9083, 9084].map(p => host + ':' + p).join(',');
+  // Auto-connect on load
+  applyConfig();
 });
 </script>
 </body>
