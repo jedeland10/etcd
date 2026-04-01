@@ -42,7 +42,7 @@ func (s *grpcKVAPI) GetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftap
 	return &raftapi.CacheHitsResponse{Cachehits: proto.Uint64(hits)}, nil
 }
 
-func (s *grpcKVAPI) GetRestores(ctx context.Context, _ *raftapi.Empty) (*raftapi.RestoresResponse, error) {
+func (s *grpcKVAPI) GetRestored(ctx context.Context, _ *raftapi.Empty) (*raftapi.RestoresResponse, error) {
 	restores := s.store.raftNode.Restores()
 	return &raftapi.RestoresResponse{Restores: proto.Uint64(restores)}, nil
 }

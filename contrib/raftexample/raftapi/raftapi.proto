@@ -13,7 +13,7 @@ service RaftKVService {
   rpc GetCacheHits (Empty) returns (CacheHitsResponse);
   rpc ResetCacheHits(Empty) returns (Empty);
 
-  rpc GetRestores (Empty) returns (RestoresResponse);
+  rpc GetRestored (Empty) returns (RestoresResponse);
 }
 
 message PutRequest {
