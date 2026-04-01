@@ -282,6 +282,53 @@ func (m *CacheHitsResponse) GetCachehits() uint64 {
 	return 0
 }
 
+type RestoresResponse struct {
+	Restores             *uint64  `protobuf:"varint,1,opt,name=restores" json:"restores,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RestoresResponse) Reset()         { *m = RestoresResponse{} }
+func (m *RestoresResponse) String() string { return proto.CompactTextString(m) }
+func (*RestoresResponse) ProtoMessage()    {}
+func (*RestoresResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f2f1aaee21633e85, []int{5}
+}
+func (m *RestoresResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RestoresResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RestoresResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RestoresResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RestoresResponse.Merge(m, src)
+}
+func (m *RestoresResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RestoresResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RestoresResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RestoresResponse proto.InternalMessageInfo
+
+func (m *RestoresResponse) GetRestores() uint64 {
+	if m != nil && m.Restores != nil {
+		return *m.Restores
+	}
+	return 0
+}
+
 type Empty struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -292,7 +339,7 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f2f1aaee21633e85, []int{5}
+	return fileDescriptor_f2f1aaee21633e85, []int{6}
 }
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -327,6 +374,7 @@ func init() {
 	proto.RegisterType((*GetRequest)(nil), "raftapi.GetRequest")
 	proto.RegisterType((*GetResponse)(nil), "raftapi.GetResponse")
 	proto.RegisterType((*CacheHitsResponse)(nil), "raftapi.CacheHitsResponse")
+	proto.RegisterType((*RestoresResponse)(nil), "raftapi.RestoresResponse")
 	proto.RegisterType((*Empty)(nil), "raftapi.Empty")
 }
 
@@ -546,6 +594,38 @@ func (m *CacheHitsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *RestoresResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RestoresResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RestoresResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Restores != nil {
+		i = encodeVarintRaftapi(dAtA, i, uint64(*m.Restores))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *Empty) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -667,6 +747,21 @@ func (m *CacheHitsResponse) Size() (n int) {
 	_ = l
 	if m.Cachehits != nil {
 		n += 1 + sovRaftapi(uint64(*m.Cachehits))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *RestoresResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Restores != nil {
+		n += 1 + sovRaftapi(uint64(*m.Restores))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -1164,6 +1259,77 @@ func (m *CacheHitsResponse) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.Cachehits = &v
+		default:
+			iNdEx = preIndex
+			skippy, err := skipRaftapi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthRaftapi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RestoresResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaftapi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RestoresResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RestoresResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Restores", wireType)
+			}
+			var v uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftapi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Restores = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRaftapi(dAtA[iNdEx:])

@@ -24,6 +24,7 @@ const (
 	RaftKVService_Get_FullMethodName            = "/raftapi.RaftKVService/Get"
 	RaftKVService_GetCacheHits_FullMethodName   = "/raftapi.RaftKVService/GetCacheHits"
 	RaftKVService_ResetCacheHits_FullMethodName = "/raftapi.RaftKVService/ResetCacheHits"
+	RaftKVService_GetRestores_FullMethodName    = "/raftapi.RaftKVService/GetRestores"
 )
 
 // RaftKVServiceClient is the client API for RaftKVService service.
@@ -35,6 +36,7 @@ type RaftKVServiceClient interface {
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
 	GetCacheHits(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CacheHitsResponse, error)
 	ResetCacheHits(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	GetRestores(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RestoresResponse, error)
 }
 
 type raftKVServiceClient struct {
@@ -85,6 +87,16 @@ func (c *raftKVServiceClient) ResetCacheHits(ctx context.Context, in *Empty, opt
 	return out, nil
 }
 
+func (c *raftKVServiceClient) GetRestores(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RestoresResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestoresResponse)
+	err := c.cc.Invoke(ctx, RaftKVService_GetRestores_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RaftKVServiceServer is the server API for RaftKVService service.
 // All implementations must embed UnimplementedRaftKVServiceServer
 // for forward compatibility.
@@ -94,6 +106,7 @@ type RaftKVServiceServer interface {
 	Get(context.Context, *GetRequest) (*GetResponse, error)
 	GetCacheHits(context.Context, *Empty) (*CacheHitsResponse, error)
 	ResetCacheHits(context.Context, *Empty) (*Empty, error)
+	GetRestores(context.Context, *Empty) (*RestoresResponse, error)
 	mustEmbedUnimplementedRaftKVServiceServer()
 }
 
@@ -115,6 +128,9 @@ func (UnimplementedRaftKVServiceServer) GetCacheHits(context.Context, *Empty) (*
 }
 func (UnimplementedRaftKVServiceServer) ResetCacheHits(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResetCacheHits not implemented")
+}
+func (UnimplementedRaftKVServiceServer) GetRestores(context.Context, *Empty) (*RestoresResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRestores not implemented")
 }
 func (UnimplementedRaftKVServiceServer) mustEmbedUnimplementedRaftKVServiceServer() {}
 func (UnimplementedRaftKVServiceServer) testEmbeddedByValue()                       {}
@@ -209,6 +225,24 @@ func _RaftKVService_ResetCacheHits_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RaftKVService_GetRestores_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftKVServiceServer).GetRestores(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RaftKVService_GetRestores_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftKVServiceServer).GetRestores(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RaftKVService_ServiceDesc is the grpc.ServiceDesc for RaftKVService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -231,6 +265,10 @@ var RaftKVService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResetCacheHits",
 			Handler:    _RaftKVService_ResetCacheHits_Handler,
+		},
+		{
+			MethodName: "GetRestores",
+			Handler:    _RaftKVService_GetRestores_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

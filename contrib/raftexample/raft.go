@@ -199,6 +199,10 @@ func (rc *raftNode) ResetCacheHits() uint64 {
 	return rc.node.ResetCacheHits()
 }
 
+func (rc *raftNode) Restores() uint64 {
+	return rc.node.Restores()
+}
+
 func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 	return &raftpb.Snapshot{}
 }

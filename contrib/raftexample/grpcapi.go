@@ -42,6 +42,11 @@ func (s *grpcKVAPI) GetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftap
 	return &raftapi.CacheHitsResponse{Cachehits: proto.Uint64(hits)}, nil
 }
 
+func (s *grpcKVAPI) GetRestores(ctx context.Context, _ *raftapi.Empty) (*raftapi.RestoresResponse, error) {
+	restores := s.store.raftNode.Restores()
+	return &raftapi.RestoresResponse{Restores: proto.Uint64(restores)}, nil
+}
+
 func (s *grpcKVAPI) ResetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raftapi.Empty, error) {
 	s.store.raftNode.ResetCacheHits()
 	log.Println("ResetCacheHits: cache hit counter reset")
