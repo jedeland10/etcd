@@ -292,9 +292,7 @@ type RestoresResponse struct {
 func (m *RestoresResponse) Reset()         { *m = RestoresResponse{} }
 func (m *RestoresResponse) String() string { return proto.CompactTextString(m) }
 func (*RestoresResponse) ProtoMessage()    {}
-func (*RestoresResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f2f1aaee21633e85, []int{5}
-}
+func (*RestoresResponse) Descriptor() ([]byte, []int) { return nil, nil }
 func (m *RestoresResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
@@ -339,7 +337,7 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f2f1aaee21633e85, []int{6}
+	return fileDescriptor_f2f1aaee21633e85, []int{5}
 }
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
