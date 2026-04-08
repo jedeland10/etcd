@@ -317,6 +317,9 @@ type Config struct {
 	// an election, thus minimizing disruptions.
 	PreVote bool `json:"pre-vote"`
 
+	// UniCacheSize is the RepliCache LRU capacity. 0 disables caching.
+	UniCacheSize int `json:"unicache-size"`
+
 	CORS map[string]struct{}
 
 	// HostWhitelist lists acceptable hostnames from HTTP client requests.
@@ -713,6 +716,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.StrictReconfigCheck, "strict-reconfig-check", cfg.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 
 	fs.BoolVar(&cfg.PreVote, "pre-vote", cfg.PreVote, "Enable the raft Pre-Vote algorithm to prevent disruption when a node that has been partitioned away rejoins the cluster.")
+	fs.IntVar(&cfg.UniCacheSize, "unicache-size", 0, "RepliCache LRU cache capacity. 0 disables caching.")
 
 	// security
 	fs.StringVar(&cfg.ClientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")

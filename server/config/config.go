@@ -154,6 +154,10 @@ type ServerConfig struct {
 	// PreVote is true to enable Raft Pre-Vote.
 	PreVote bool
 
+	// UniCacheSize is the capacity of the RepliCache LRU cache.
+	// 0 disables caching.
+	UniCacheSize int
+
 	// SocketOpts are socket options passed to listener config.
 	SocketOpts transport.SocketOpts
 

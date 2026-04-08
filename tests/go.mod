@@ -13,6 +13,7 @@ replace (
 	go.etcd.io/etcd/etcdutl/v3 => ../etcdutl
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/server/v3 => ../server
+	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408210248-dc46ad512d93
 )
 
 require (
@@ -47,7 +48,7 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 )
 
 require (
