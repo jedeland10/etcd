@@ -84,7 +84,7 @@ replace (
 	go.etcd.io/etcd/client/v2 => ./../client/internal/v2
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
-	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408210248-dc46ad512d93
+	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408212250-dba488450278
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

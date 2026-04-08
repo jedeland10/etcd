@@ -13,7 +13,7 @@ replace (
 	go.etcd.io/etcd/etcdutl/v3 => ../etcdutl
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/server/v3 => ../server
-	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408210248-dc46ad512d93
+	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408212250-dba488450278
 )
 
 require (
