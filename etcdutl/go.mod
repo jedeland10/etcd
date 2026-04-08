@@ -11,7 +11,7 @@ replace (
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/server/v3 => ../server
-	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408212250-dba488450278
+	go.etcd.io/raft/v3 => github.com/jedeland10/raft v0.0.0-20260408221933-5f9e52a605e5
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
