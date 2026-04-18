@@ -200,7 +200,8 @@ func (rc *raftNode) ResetCacheHits() uint64 {
 }
 
 func (rc *raftNode) Restores() uint64 {
-	return rc.node.Restores()
+	// Restores() is not implemented in this version of the raft dependency.
+	return 0
 }
 
 func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
