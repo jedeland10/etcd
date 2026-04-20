@@ -280,7 +280,7 @@ func (rc *raftNode) startRaft() {
 		MaxSizePerMsg:             1024 * 1024,
 		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
-		UniCacheSize:              50_000,
+		UniCacheSize:              75_000,
 	}
 
 	rc.node = raft.StartNode(c, rpeers)
