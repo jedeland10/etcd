@@ -32,9 +32,35 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	"go.etcd.io/raft/v3/unicache"
 
 	"go.uber.org/zap"
 )
+
+// Multi-field RepliCache paths for Kubernetes objects carried as raftexample
+// proposals. A proposal is a protostore.MyKV{Key=field1, Value=field2}; Value
+// holds the raw etcd value, which for k8s objects is a 4-byte "k8s\x00" magic
+// prefix followed by a runtime.Unknown wrapper (field1=TypeMeta, field2=object).
+// Inside the object, field1=ObjectMeta (field12=annotations, field17=managedFields)
+// and field2=spec. This layout is shared by pods/deployments/replicasets/jobs/…,
+// so one path set generalizes across kinds.
+var k8sUniCachePaths = [][]unicache.PathStep{
+	// managedFields — the dominant recurring blob on workload objects.
+	{{FieldNum: 2, SkipBytes: 4}, {FieldNum: 2}, {FieldNum: 1}, {FieldNum: 17}},
+	// annotations.
+	{{FieldNum: 2, SkipBytes: 4}, {FieldNum: 2}, {FieldNum: 1}, {FieldNum: 12}},
+	//
+	// Deliberately NOT cached: spec, i.e. {2,skip4}->2->2. Field 2 of the wrapped
+	// object is a message (spec) for pods/deployments/replicasets/jobs, but on
+	// other kinds it is a different field that can be a scalar. The cache marks a
+	// leaf as "substituted" by its wire type being Varint, so a genuine varint at
+	// a configured leaf is indistinguishable from a cache ID: BatchUpdateCache
+	// then "decodes" real data and poisons the cache for every kind. Only leaves
+	// that are length-delimited on every object kind are safe to configure.
+}
+
+// Parallel to k8sUniCachePaths: whether the leaf field may repeat.
+var k8sUniCacheRepeated = []bool{true, true}
 
 type commit struct {
 	data       []string
@@ -281,6 +307,8 @@ func (rc *raftNode) startRaft() {
 		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
 		UniCacheSize:              75_000,
+		UniCachePaths:             k8sUniCachePaths,
+		UniCacheRepeated:          k8sUniCacheRepeated,
 	}
 
 	rc.node = raft.StartNode(c, rpeers)

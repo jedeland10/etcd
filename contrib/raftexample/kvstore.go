@@ -93,6 +93,9 @@ type kvstore struct {
 	raftNode    *raftNode
 }
 
+// verifyStore enables read-back verification mode; see the --verify flag.
+var verifyStore bool
+
 var proposalBufferPool = sync.Pool{
 	New: func() interface{} { return &protostore.MyKV{} },
 }
@@ -212,6 +215,15 @@ func (s *kvstore) readProtoCommits(commitC <-chan *commit, errorC <-chan error) 
 				log.Printf("[DecodeError] Raw data (hex): %x", data)
 				log.Printf("[DecodeError] Raw data (base64): %s", base64.StdEncoding.EncodeToString([]byte(data)))
 				log.Printf("[DecodeError] Entry #%d, length: %d", i, len(data))
+			}
+			// Throughput runs deliberately skip materializing the store: the
+			// benchmark only needs decode + apply-wait, and a growing sync.Map on
+			// the apply path would perturb the numbers. Under --verify we do
+			// populate it, so a client can read committed values back from each
+			// node and confirm the follower's own UniCache reconstructed them
+			// byte-identically to what the leader proposed.
+			if verifyStore {
+				s.kvStore.Store(string(dataKv.Key), string(dataKv.Value))
 			}
 			s.applyWait.Trigger(dataKv.ProposalID, nil)
 		}
