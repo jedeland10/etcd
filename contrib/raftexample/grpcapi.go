@@ -53,6 +53,16 @@ func (s *grpcKVAPI) ResetCacheHits(ctx context.Context, _ *raftapi.Empty) (*raft
 	return &raftapi.Empty{}, nil
 }
 
+// ResetRestored zeroes the SafeEncode restore counter. It exists so a benchmark
+// client can discard everything the warmup phase accumulated: go-ycsb resets
+// both counters together after warmup, and without this the restore figure
+// would cover a different window than the cache-hit figure it is read against.
+func (s *grpcKVAPI) ResetRestored(ctx context.Context, _ *raftapi.Empty) (*raftapi.Empty, error) {
+	s.store.raftNode.ResetRestores()
+	log.Println("ResetRestored: restore counter reset")
+	return &raftapi.Empty{}, nil
+}
+
 // Put submits a proposal to the underlying key-value store without waiting for a commit ack.
 func (s *grpcKVAPI) Put(ctx context.Context, req *raftapi.PutRequest) (*raftapi.PutResponse, error) {
 	// Call a new Put method on your kvstore that blocks until the proposal is committed.

@@ -62,6 +62,39 @@ var k8sUniCachePaths = [][]unicache.PathStep{
 // Parallel to k8sUniCachePaths: whether the leaf field may repeat.
 var k8sUniCacheRepeated = []bool{true, true}
 
+// singleFieldUniCachePaths caches only MyKV.Key (field 1) — the single-field
+// key-caching scheme the multi-field work is measured against. Keeping it here
+// rather than on a separate branch means every benchmark arm runs the same
+// binary off the same commit, so a throughput difference cannot be attributed to
+// anything but the cache configuration.
+var singleFieldUniCachePaths = [][]unicache.PathStep{
+	{{FieldNum: 1}},
+}
+
+// Cache configuration, set from main's flags before newRaftNode runs.
+var (
+	// cacheMode is one of "off", "single" or "multi".
+	cacheMode = "multi"
+	// cacheSize is the UniCache capacity in entries; <= 0 disables caching
+	// regardless of cacheMode.
+	cacheSize = 75_000
+)
+
+// uniCacheConfig turns the flags into the three raft.Config cache fields.
+func uniCacheConfig() (size int, paths [][]unicache.PathStep, repeated []bool) {
+	switch cacheMode {
+	case "off":
+		return 0, nil, nil
+	case "single":
+		return cacheSize, singleFieldUniCachePaths, []bool{false}
+	case "multi":
+		return cacheSize, k8sUniCachePaths, k8sUniCacheRepeated
+	default:
+		log.Fatalf("unknown --cache mode %q (want off, single or multi)", cacheMode)
+		return 0, nil, nil
+	}
+}
+
 type commit struct {
 	data       []string
 	applyDoneC chan<- struct{}
@@ -225,9 +258,17 @@ func (rc *raftNode) ResetCacheHits() uint64 {
 	return rc.node.ResetCacheHits()
 }
 
+// Restores reports how many times SafeEncode had to abandon an encoding and
+// send full bytes instead — the signal that cache pressure is eating the
+// bandwidth win. It used to be hardcoded to 0 with a comment claiming the raft
+// dependency lacked it; the dependency has implemented both of these for a
+// while, so every benchmark before this reported no restores by construction.
 func (rc *raftNode) Restores() uint64 {
-	// Restores() is not implemented in this version of the raft dependency.
-	return 0
+	return rc.node.Restores()
+}
+
+func (rc *raftNode) ResetRestores() uint64 {
+	return rc.node.ResetRestores()
 }
 
 func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
@@ -306,10 +347,10 @@ func (rc *raftNode) startRaft() {
 		MaxSizePerMsg:             1024 * 1024,
 		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
-		UniCacheSize:              75_000,
-		UniCachePaths:             k8sUniCachePaths,
-		UniCacheRepeated:          k8sUniCacheRepeated,
 	}
+	c.UniCacheSize, c.UniCachePaths, c.UniCacheRepeated = uniCacheConfig()
+	log.Printf("raftexample: unicache mode=%s size=%d paths=%d",
+		cacheMode, c.UniCacheSize, len(c.UniCachePaths))
 
 	rc.node = raft.StartNode(c, rpeers)
 

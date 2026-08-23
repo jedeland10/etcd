@@ -35,3 +35,12 @@ hack/tls-setup/certs
 /tools/benchmark/benchmark
 /out
 /etcd-dump-logs
+
+# Local iteration on the raft fork. go.mod pins go.etcd.io/raft/v3 to a
+# published commit because the GCP benchmark VMs build from git and cannot see
+# this filesystem; go.local.mod points the same import at the working copy.
+#   go build -modfile=go.local.mod ./contrib/raftexample/
+go.local.mod
+go.local.sum
+go.work
+go.work.sum
