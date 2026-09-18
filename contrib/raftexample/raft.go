@@ -80,18 +80,26 @@ var (
 	cacheSize = 75_000
 )
 
-// uniCacheConfig turns the flags into the three raft.Config cache fields.
-func uniCacheConfig() (size int, paths [][]unicache.PathStep, repeated []bool) {
+// uniCacheConfig turns the flags into the raft.Config cache fields.
+//
+// "multi-fast" is "multi" plus leader-assigned IDs (define-on-append). The
+// legacy scheme cannot reference a value until every follower has COMMITTED the
+// entry that first carried it; measured on a real Kubernetes trace that blocked
+// every live restore (evictionRisk=0, followerBehind=191,880) and held the wire
+// saving to ~12% against 39.9% achievable offline.
+func uniCacheConfig() (size int, paths [][]unicache.PathStep, repeated []bool, defineOnAppend bool) {
 	switch cacheMode {
 	case "off":
-		return 0, nil, nil
+		return 0, nil, nil, false
 	case "single":
-		return cacheSize, singleFieldUniCachePaths, []bool{false}
+		return cacheSize, singleFieldUniCachePaths, []bool{false}, false
 	case "multi":
-		return cacheSize, k8sUniCachePaths, k8sUniCacheRepeated
+		return cacheSize, k8sUniCachePaths, k8sUniCacheRepeated, false
+	case "multi-fast":
+		return cacheSize, k8sUniCachePaths, k8sUniCacheRepeated, true
 	default:
-		log.Fatalf("unknown --cache mode %q (want off, single or multi)", cacheMode)
-		return 0, nil, nil
+		log.Fatalf("unknown --cache mode %q (want off, single, multi or multi-fast)", cacheMode)
+		return 0, nil, nil, false
 	}
 }
 
@@ -348,9 +356,9 @@ func (rc *raftNode) startRaft() {
 		MaxInflightMsgs:           1_000_000,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
-	c.UniCacheSize, c.UniCachePaths, c.UniCacheRepeated = uniCacheConfig()
-	log.Printf("raftexample: unicache mode=%s size=%d paths=%d",
-		cacheMode, c.UniCacheSize, len(c.UniCachePaths))
+	c.UniCacheSize, c.UniCachePaths, c.UniCacheRepeated, c.UniCacheDefineOnAppend = uniCacheConfig()
+	log.Printf("raftexample: unicache mode=%s size=%d paths=%d defineOnAppend=%v",
+		cacheMode, c.UniCacheSize, len(c.UniCachePaths), c.UniCacheDefineOnAppend)
 
 	rc.node = raft.StartNode(c, rpeers)
 

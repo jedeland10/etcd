@@ -33,7 +33,7 @@ func main() {
 	grpcPort := flag.Int("port", 9121, "key-value server port")
 	join := flag.Bool("join", false, "join an existing cluster")
 	verify := flag.Bool("verify", false, "materialize committed values in the kv store so they can be read back and byte-compared (off for throughput runs)")
-	cache := flag.String("cache", "multi", "RepliCache mode: off (plain raft), single (cache MyKV.Key), multi (cache nested k8s fields)")
+	cache := flag.String("cache", "multi", "RepliCache mode: off (plain raft), single (cache MyKV.Key), multi (cache nested k8s fields), multi-fast (multi with leader-assigned IDs)")
 	cacheSz := flag.Int("cache-size", 75_000, "UniCache capacity in entries; <=0 disables caching")
 	flag.Parse()
 	verifyStore = *verify
