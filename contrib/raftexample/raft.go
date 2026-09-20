@@ -78,6 +78,9 @@ var (
 	// cacheSize is the UniCache capacity in entries; <= 0 disables caching
 	// regardless of cacheMode.
 	cacheSize = 75_000
+	// campaignAtStart makes this node stand for election immediately, so a
+	// benchmark can place the leader where it wants it.
+	campaignAtStart = false
 )
 
 // uniCacheConfig turns the flags into the raft.Config cache fields.
@@ -381,6 +384,29 @@ func (rc *raftNode) startRaft() {
 
 	go rc.serveRaft()
 	go rc.serveChannels()
+
+	// Deterministic leader placement for benchmarks. Raft otherwise elects
+	// whoever's randomised timer (30-60s here) fires first, so pinning a leader
+	// by restarting the cluster until the right node wins is a 1-in-N lottery
+	// costing minutes per attempt. Campaigning explicitly makes the placement
+	// exact and skips the election wait entirely.
+	//
+	// Campaign fails while peers are still connecting (no quorum yet), so it is
+	// retried until this node is actually leader. Steady-state behaviour is
+	// unaffected: this only decides who wins the very first election.
+	if campaignAtStart {
+		go func() {
+			for i := 0; i < 120; i++ {
+				if rc.node.Status().RaftState == raft.StateLeader {
+					log.Printf("raftexample: node %d campaigned and is leader", rc.id)
+					return
+				}
+				_ = rc.node.Campaign(context.TODO())
+				time.Sleep(500 * time.Millisecond)
+			}
+			log.Printf("raftexample: node %d never became leader despite --campaign", rc.id)
+		}()
+	}
 }
 
 // stop closes http, closes all channels, and stops raft.
